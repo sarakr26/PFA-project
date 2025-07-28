@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Extraction des statistiques</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .extract-container { max-width: 1000px; margin: 2rem auto; background: #fff; border-radius: 1.2rem; box-shadow: 0 4px 16px rgba(78,84,200,0.08); padding: 2rem; }
+        .extract-title { text-align: center; color: #4e54c8; font-weight: 700; margin-bottom: 2rem; }
+        .table { margin-top: 2rem; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="course-slider-container" style="position:fixed; right:0; top:0; width:300px; z-index:1000; background:#4e54c8; height:100vh; padding:2rem 1rem; color:#fff;">
+        <h3 style="color:#fff; text-align:center;">Choisissez un cours</h3>
+        <div id="course-slider" class="d-flex overflow-auto" style="gap:1rem; padding:1rem; background:#eaeaff; border-radius:1rem; overflow-x:auto; display:flex; margin-bottom:2rem;">
+            {% for row in data %}
+            <button class="btn btn-outline-primary course-slide-btn" data-cours="{{ row.cours }}" data-lien="{{ row.lien }}">{{ row.cours }}</button>
+            {% endfor %}
+        </div>
+        <ul class="course-list" style="list-style:none; padding:0;">
+            {% for row in data %}
+            <li style="margin-bottom:1rem;"><a href="#" class="course-link" data-cours="{{ row.cours }}" data-lien="{{ row.lien }}" style="color:#fff; text-decoration:none; font-weight:500; display:block; padding:0.75rem 1rem; border-radius:0.5rem; background:rgba(255,255,255,0.08); transition:background 0.2s;">{{ row.cours }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="extract-container" style="margin-right:320px;">
+        <h2 class="extract-title">Statistiques des utilisateurs par cours</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% if graph_html %}
+            <div class="mb-2">
+                <label>Filtrer : </label>
+                <select id="filter-users" class="form-select d-inline w-auto">
+                    <option value="all">Tous</option>
+                    <option value="completed">Complétés</option>
+                    <option value="not_completed">Non complétés</option>
+                </select>
+            </div>
+            <div id="users-graph">{{ graph_html|safe }}</div>
+        {% endif %}
+        {% if graph_completion_html %}
+            <div class="mb-2 mt-5">
+                <label>Filtrer : </label>
+                <select id="filter-completion" class="form-select d-inline w-auto">
+                    <option value="all">Tous</option>
+                    <option value="completed">Complétés</option>
+                    <option value="not_completed">Non complétés</option>
+                </select>
+            </div>
+            <div id="completion-graph">{{ graph_completion_html|safe }}</div>
+        {% endif %}
+        {% if data %}
+        <table class="table table-bordered table-striped mt-4">
+            <thead class="table-primary">
+                <tr>
+                    <th>Cours</th>
+                    <th>Nombre d'utilisateurs</th>
+                    <th>Complétés</th>
+                    <th>Taux de complétion (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr>
+                    <td>{{ row.cours }}</td>
+                    <td>{{ row.users }}</td>
+                    <td>{{ row.completed }}</td>
+                    <td>{% if row.taux_completion != 'N/A' %}{{ row.taux_completion }}{% else %}-{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        <div id="course-content"></div>
+        <div class="text-center mt-4">
+            <a href="{{ url_for('main.logout') }}" class="btn btn-outline-primary">Déconnexion</a>
+            {% if data %}
+            <a href="{{ url_for('main.export_excel') }}" class="btn btn-success ml-2">Exporter en Excel</a>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-info ml-2">📊 Dashboard par Département</a>
+            {% endif %}
+        </div>
+    </div>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+    // Récupérer les données du tableau pour filtrage
+    const coursData = {{ cours_data_json|safe }};
+
+    // Fonction de filtrage pour le graphique des utilisateurs
+    function filterUsersData(type) {
+        if (type === 'completed') {
+            return coursData.filter(row => row.taux_completion === 100);
+        } else if (type === 'not_completed') {
+            return coursData.filter(row => row.taux_completion !== null && row.taux_completion < 100);
+        } else {
+            return coursData;
+        }
+    }
+
+    // Fonction de filtrage pour le graphique du taux de complétion
+    function filterCompletionData(type) {
+        if (type === 'completed') {
+            // Afficher taux_completion normal
+            return coursData.map(row => ({cours: row.cours, taux: row.taux_completion}));
+        } else if (type === 'not_completed') {
+            // Afficher 100 - taux_completion
+            return coursData.map(row => ({cours: row.cours, taux: (typeof row.taux_completion === 'number' ? 100 - row.taux_completion : null)}));
+        } else {
+            // Par défaut, taux_completion normal
+            return coursData.map(row => ({cours: row.cours, taux: row.taux_completion}));
+        }
+    }
+
+    // Mettre à jour le graphique des utilisateurs
+    document.getElementById('filter-users')?.addEventListener('change', function() {
+        const type = this.value;
+        const filtered = filterUsersData(type);
+        const x = filtered.map(row => row.cours);
+        const y = filtered.map(row => row.users);
+        Plotly.restyle('users-graph', {x: [x], y: [y]});
+    });
+
+    // Mettre à jour le graphique du taux de complétion
+    document.getElementById('filter-completion')?.addEventListener('change', function() {
+        const type = this.value;
+        const filtered = filterCompletionData(type);
+        const x = filtered.map(row => row.cours);
+        const y = filtered.map(row => row.taux);
+        let title = "Taux de complétion (%) par cours";
+        if (type === 'not_completed') {
+            title = "Taux de non complétion (%) par cours";
+        } else if (type === 'completed') {
+            title = "Taux de complétion (%) par cours";
+        }
+        Plotly.restyle('completion-graph', {x: [x], y: [y]});
+        Plotly.relayout('completion-graph', {title: title, 'yaxis.title.text': title});
+    });
+
+    // Ajout de la gestion sidebar :
+    function showEnrolledUsers(courseName, courseUrl) {
+        document.getElementById('course-content').innerHTML = `<div class='alert alert-info'>Chargement des utilisateurs pour <strong>${courseName}</strong>...</div>`;
+        fetch('/get_enrolled_users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ course_url: courseUrl })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('course-content').innerHTML = `<div class='alert alert-danger'>Erreur : ${data.error}</div>`;
+            } else if (data.users && data.users.length > 0) {
+                let html = `<div class='alert alert-success'>Utilisateurs inscrits pour <strong>${courseName}</strong> :</div>`;
+                html += `<table class='table table-bordered'><thead><tr><th>Nom</th><th>Matricule</th></tr></thead><tbody>`;
+                data.users.forEach(u => {
+                    html += `<tr><td>${u.full_name || ''}</td><td>${u.matricule || ''}</td></tr>`;
+                });
+                html += `</tbody></table>`;
+                document.getElementById('course-content').innerHTML = html;
+            } else {
+                document.getElementById('course-content').innerHTML = `<div class='alert alert-warning'>Aucun utilisateur inscrit trouvé pour ce cours.</div>`;
+            }
+        })
+        .catch(err => {
+            document.getElementById('course-content').innerHTML = `<div class='alert alert-danger'>Erreur lors de la récupération des utilisateurs.</div>`;
+        });
+    }
+    document.querySelectorAll('.course-link, .course-slide-btn').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            const cours = this.getAttribute('data-cours');
+            const lien = this.getAttribute('data-lien');
+            if (lien) {
+                showEnrolledUsers(cours, lien);
+            } else {
+                document.getElementById('course-content').innerHTML = `<div class='alert alert-warning'>Aucun lien de cours trouvé.</div>`;
+            }
+        });
+    });
+    </script>
+</body>
+</html> 

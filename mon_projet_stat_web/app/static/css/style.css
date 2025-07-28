@@ -1,0 +1,57 @@
+body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+}
+
+.card {
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    background: rgba(255,255,255,0.95);
+    border: none;
+}
+
+h3, h2 {
+    color: #4e54c8;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, #4e54c8 0%, #8f94fb 100%);
+    border: none;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(78,84,200,0.15);
+    transition: background 0.3s;
+}
+.btn-primary:hover {
+    background: linear-gradient(90deg, #8f94fb 0%, #4e54c8 100%);
+}
+
+.table {
+    background: white;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(78,84,200,0.08);
+}
+.table th {
+    background: #4e54c8;
+    color: #fff;
+    font-weight: 600;
+    border: none;
+}
+.table td {
+    border: none;
+    color: #333;
+}
+
+.navbar {
+    border-radius: 0 0 1rem 1rem;
+    box-shadow: 0 2px 8px rgba(78,84,200,0.10);
+}
+
+@media (max-width: 600px) {
+    .card { min-width: 100%!important; padding: 1rem!important; }
+    .navbar-brand, .navbar-text { font-size: 1rem; }
+    h2, h3 { font-size: 1.2rem; }
+} 

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Choix du cours</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body { background: #f8f9fa; }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            height: 100%;
+            background: #4e54c8;
+            color: #fff;
+            box-shadow: -2px 0 8px rgba(78,84,200,0.08);
+            padding: 2rem 1rem;
+            z-index: 1000;
+        }
+        .sidebar h3 {
+            color: #fff;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .course-list {
+            list-style: none;
+            padding: 0;
+        }
+        .course-list li {
+            margin-bottom: 1rem;
+        }
+        .course-link {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            display: block;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            background: rgba(255,255,255,0.08);
+            transition: background 0.2s;
+        }
+        .course-link:hover {
+            background: #43e97b;
+            color: #4e54c8;
+        }
+        .course-slider-container {
+            margin-bottom: 2rem;
+        }
+        #course-slider {
+            gap: 1rem;
+            padding: 1rem;
+            background: #eaeaff;
+            border-radius: 1rem;
+            overflow-x: auto;
+            display: flex;
+        }
+        .course-slide-btn {
+            min-width: 180px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="course-slider-container">
+        <div id="course-slider" class="d-flex overflow-auto">
+            {% for row in data %}
+            <button class="btn btn-outline-primary course-slide-btn" data-cours="{{ row.cours }}" data-lien="{{ row.lien }}">{{ row.cours }}</button>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="sidebar">
+        <h3>Choisissez un cours</h3>
+        <ul class="course-list">
+            {% for row in data %}
+            <li><a href="#" class="course-link" data-cours="{{ row.cours }}" data-lien="{{ row.lien }}">{{ row.cours }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="container" style="margin-right:300px;">
+        <h2 class="mt-5">Bienvenue !</h2>
+        <p>Sélectionnez un cours dans la barre latérale droite pour afficher ses détails.</p>
+        <!-- Zone de contenu dynamique -->
+        <div id="course-content"></div>
+    </div>
+    <script>
+    function showEnrolledUsers(courseName, courseUrl) {
+        document.getElementById('course-content').innerHTML = `<div class='alert alert-info'>Chargement des utilisateurs pour <strong>${courseName}</strong>...</div>`;
+        fetch('/get_enrolled_users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ course_url: courseUrl })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('course-content').innerHTML = `<div class='alert alert-danger'>Erreur : ${data.error}</div>`;
+            } else if (data.users && data.users.length > 0) {
+                let html = `<div class='alert alert-success'>Utilisateurs inscrits pour <strong>${courseName}</strong> :</div>`;
+                html += `<table class='table table-bordered'><thead><tr><th>Nom</th><th>Matricule</th></tr></thead><tbody>`;
+                data.users.forEach(u => {
+                    html += `<tr><td>${u.full_name || ''}</td><td>${u.matricule || ''}</td></tr>`;
+            });
+                html += `</tbody></table>`;
+                document.getElementById('course-content').innerHTML = html;
+        } else {
+                document.getElementById('course-content').innerHTML = `<div class='alert alert-warning'>Aucun utilisateur inscrit trouvé pour ce cours.</div>`;
+        }
+        })
+        .catch(err => {
+            document.getElementById('course-content').innerHTML = `<div class='alert alert-danger'>Erreur lors de la récupération des utilisateurs.</div>`;
+        });
+    }
+    document.querySelectorAll('.course-link, .course-slide-btn').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            const cours = this.getAttribute('data-cours');
+            const lien = this.getAttribute('data-lien');
+            if (lien) {
+                showEnrolledUsers(cours, lien);
+            } else {
+                document.getElementById('course-content').innerHTML = `<div class='alert alert-warning'>Aucun lien de cours trouvé.</div>`;
+            }
+        });
+    });
+    </script>
+</body>
+</html>
