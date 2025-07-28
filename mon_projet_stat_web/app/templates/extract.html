@@ -156,10 +156,11 @@
                 document.getElementById('course-content').innerHTML = `<div class='alert alert-danger'>Erreur : ${data.error}</div>`;
             } else if (data.users && data.users.length > 0) {
                 let html = `<div class='alert alert-success'>Utilisateurs inscrits pour <strong>${courseName}</strong> :</div>`;
-                html += `<table class='table table-bordered'><thead><tr><th>Nom</th><th>Matricule</th></tr></thead><tbody>`;
-                data.users.forEach(u => {
-                    html += `<tr><td>${u.full_name || ''}</td><td>${u.matricule || ''}</td></tr>`;
-                });
+                html += `<table class='table table-bordered'><thead><tr><th>N°</th><th>Nom</th><th>Matricule</th></tr></thead><tbody>`;
+                for (let i = 0; i < data.users.length; i++) {
+                    const u = data.users[i];
+                    html += `<tr><td>${i + 1}</td><td>${u.full_name || ''}</td><td>${u.matricule || ''}</td></tr>`;
+                }
                 html += `</tbody></table>`;
                 document.getElementById('course-content').innerHTML = html;
             } else {

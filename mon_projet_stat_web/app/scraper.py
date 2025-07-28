@@ -15,7 +15,7 @@ import traceback
 
 def extract_users_from_course(username, password, course_url, headless=True):
     """
-    Extrait les informations des utilisateurs inscrits à un cours spécifique
+    Extrait les informations des utilisateurs inscrits à un cours spécifique (toutes les pages)
     """
     print(f"[Selenium] Extraction des utilisateurs pour le cours : {course_url}", file=sys.stderr)
     options = Options()
@@ -67,50 +67,73 @@ def extract_users_from_course(username, password, course_url, headless=True):
         except Exception:
             pass  # Si pas de loader, continuer
 
-        # DEBUG : Afficher l'URL courante et le HTML de la page
-        print("[Selenium] URL courante :", driver.current_url, file=sys.stderr)
-        print("[Selenium] Début du HTML de la page :", file=sys.stderr)
-        print(driver.page_source[:5000], file=sys.stderr)
+        # Sélectionner le nombre maximum de lignes par page
+        try:
+            rows_select = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'select.select-rows')))
+            options = rows_select.find_elements(By.TAG_NAME, 'option')
+            # Prendre la plus grande valeur numérique (ignorer 'show more')
+            max_option = max([opt for opt in options if opt.get_attribute('value').isdigit()], key=lambda o: int(o.get_attribute('value')))
+            rows_select.click()
+            max_option.click()
+            time.sleep(2)  # attendre le rechargement
+        except Exception as e:
+            print(f"[Selenium] Impossible de sélectionner le max de lignes par page : {e}", file=sys.stderr)
 
-        # Attendre que le tableau soit présent
-        wait.until(EC.presence_of_element_located((By.ID, "usersTable")))
-        user_rows = driver.find_elements(By.CSS_SELECTOR, "#usersTable tr.defaultRowHeight")
-        if not user_rows:
-            print("[Selenium] Aucun user_row trouvé, voici un extrait du <body>:", file=sys.stderr)
-            body_html = driver.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
-            print(body_html[:5000], file=sys.stderr)
-        for row in user_rows:
+        # Pagination : récupérer toutes les pages
+        all_users = []
+        page_select = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'select.select-page')))
+        page_options = page_select.find_elements(By.TAG_NAME, 'option')
+        total_pages = len([opt for opt in page_options if opt.get_attribute('value').isdigit()])
+        for i in range(total_pages):
             try:
-                tds = row.find_elements(By.TAG_NAME, "td")
-                if not tds or len(tds) < 2:
-                    continue
-                name_text = tds[0].text.strip()
-                # Vérifier la présence d'un input[value='Enrolled'] dans la ligne
-                enrolled = False
-                inputs = row.find_elements(By.CSS_SELECTOR, "input[value='Enrolled']")
-                if inputs:
-                    enrolled = True
-                if not enrolled:
-                    continue
-                # Extraire nom et matricule
-                if "(MASA" in name_text:
-                    name, matricule = name_text.split("(MASA")
-                    name = name.strip()
-                    matricule = matricule.replace(")", "").strip()
-                else:
-                    name = name_text
-                    matricule = ""
-                users_data.append({"full_name": name, "matricule": matricule})
+                # Sélectionner la page i
+                page_select = driver.find_element(By.CSS_SELECTOR, 'select.select-page')
+                page_options = page_select.find_elements(By.TAG_NAME, 'option')
+                page_options[i].click()
+                time.sleep(1.5)  # attendre le chargement
+                # Attendre que le tableau soit présent
+                wait.until(EC.presence_of_element_located((By.ID, "usersTable")))
+                user_rows = driver.find_elements(By.CSS_SELECTOR, "#usersTable tr.defaultRowHeight")
+                for row in user_rows:
+                    try:
+                        tds = row.find_elements(By.TAG_NAME, "td")
+                        if not tds or len(tds) < 2:
+                            continue
+                        name_text = tds[0].text.strip()
+                        # Vérifier la présence d'un bouton ou input ENROLLED
+                        enrolled = False
+                        # Vérifier le bouton ENROLLED
+                        enrolled_btn = row.find_elements(By.CSS_SELECTOR, "button, .btn, .enrolled")
+                        if any('ENROLLED' in btn.text for btn in enrolled_btn):
+                            enrolled = True
+                        # Vérifier input[value='Enrolled']
+                        inputs = row.find_elements(By.CSS_SELECTOR, "input[value='Enrolled']")
+                        if inputs:
+                            enrolled = True
+                        if not enrolled:
+                            continue
+                        # Extraire nom et matricule
+                        if "(MASA" in name_text:
+                            name, matricule = name_text.split("(MASA")
+                            name = name.strip()
+                            matricule = matricule.replace(")", "").strip()
+                        else:
+                            name = name_text
+                            matricule = ""
+                        all_users.append({"full_name": name, "matricule": matricule})
+                    except Exception as e:
+                        print(f"[Selenium] Erreur lors de l'extraction d'un utilisateur: {str(e)}", file=sys.stderr)
+                        continue
             except Exception as e:
-                print(f"[Selenium] Erreur lors de l'extraction d'un utilisateur: {str(e)}", file=sys.stderr)
+                print(f"[Selenium] Erreur lors du changement de page {i+1}: {str(e)}", file=sys.stderr)
                 continue
+        return all_users
     except Exception as e:
         print(f"[Selenium] Erreur lors de l'extraction: {str(e)}", file=sys.stderr)
         print(traceback.format_exc(), file=sys.stderr)
         return None
     finally:
         driver.quit()
-    return users_data
 
 def extract_courses_and_users(username, password, headless=False):
     """
