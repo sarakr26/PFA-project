@@ -85,22 +85,18 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        cours_file = request.files.get('cours_file')
         users_file = request.files.get('users_file')
         
         print(f"Tentative de connexion avec username={username}", file=sys.stderr)
         
-        if username and password and cours_file and users_file:
+        if username and password and users_file:
             try:
                 # Créer le dossier data s'il n'existe pas
                 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
                 os.makedirs(data_dir, exist_ok=True)
                 
-                # Sauvegarder les fichiers Excel
-                cours_path = os.path.join(data_dir, 'departement_cours.xlsx')
+                # Sauvegarder le fichier utilisateurs Excel
                 users_path = os.path.join(data_dir, 'utilisateurs_departements.xlsx')
-                
-                cours_file.save(cours_path)
                 users_file.save(users_path)
                 
                 print(f"Fichiers Excel sauvegardés dans {data_dir}", file=sys.stderr)
@@ -115,7 +111,7 @@ def login():
                 error = f"Erreur lors de la sauvegarde des fichiers : {str(e)}"
                 print(f"Erreur lors de la sauvegarde : {e}", file=sys.stderr)
         else:
-            error = "Veuillez remplir tous les champs et déposer les deux fichiers Excel."
+            error = "Veuillez remplir tous les champs et déposer le fichier utilisateurs/département."
             print("Champs manquants ou fichiers non fournis", file=sys.stderr)
     return render_template('login.html', error=error)
 
