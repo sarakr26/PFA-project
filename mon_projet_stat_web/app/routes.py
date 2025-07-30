@@ -177,12 +177,17 @@ def extract():
             flash("Impossible de charger les données des départements", "warning")
 
         session['last_data'] = data  # Pour export Excel
+        # Obtenir la liste unique des départements
+        departments = sorted(list(set(user_dept_df['departement_actuel'].dropna().unique())))
+
         return render_template('extract.html', 
                             graph_html=graph_html, 
                             graph_completion_html=graph_completion_html, 
                             data=data, 
                             cours_data_json=json.dumps(data),
-                            users_departments=users_departments)
+                            users_departments=users_departments,
+                            departments=departments,
+                            total_rows=len(users_departments) if users_departments else 0)
                             
     except Exception as e:
         import traceback
