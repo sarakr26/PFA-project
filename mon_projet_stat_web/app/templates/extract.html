@@ -26,6 +26,30 @@
         </ul>
     </div>
     <div class="extract-container" style="margin-right:320px;">
+        <h2 class="extract-title">Liste des Utilisateurs par Département</h2>
+        <table class="table table-bordered table-striped mt-4">
+            <thead class="table-primary">
+                <tr>
+                    <th>Matricule</th>
+                    <th>Département Actuel</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if users_departments %}
+                    {% for user in users_departments %}
+                    <tr>
+                        <td>{{ user.matricule }}</td>
+                        <td>{{ user.departement_actuel }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="2" class="text-center">Aucune donnée disponible</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        
         <h2 class="extract-title">Statistiques des utilisateurs par cours</h2>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
