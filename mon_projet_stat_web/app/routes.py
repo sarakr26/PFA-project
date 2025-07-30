@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file, jsonify
+from flask import Blueprint, render_template, request, url_for, session, flash, send_file, jsonify, redirect
 import plotly.graph_objs as go
 import plotly.io as pio
 from app.scraper import extract_courses_and_users
@@ -32,11 +32,47 @@ def load_department_mappings():
         cours_path = os.path.join(data_dir, 'departement_cours.xlsx')
         users_path = os.path.join(data_dir, 'utilisateurs_departements.xlsx')
         
+        print(f"Tentative de lecture des fichiers Excel dans {data_dir}", file=sys.stderr)
+        
         if not os.path.exists(cours_path) or not os.path.exists(users_path):
+            print("Un ou plusieurs fichiers Excel sont manquants", file=sys.stderr)
             return None, None
-            
+        
+        # Lire le fichier des utilisateurs, spécifiquement la feuille "Effectifs"
+        try:
+            excel_file = pd.ExcelFile(users_path)
+            print(f"Feuilles disponibles : {excel_file.sheet_names}", file=sys.stderr)
+            # Lire en utilisant la première ligne comme en-têtes
+            user_dept_df = pd.read_excel(users_path, sheet_name='Effectifs', header=1)
+            print(f"Colonnes trouvées dans le fichier : {user_dept_df.columns.tolist()}", file=sys.stderr)
+            print("\nPremières lignes du fichier :", file=sys.stderr)
+            print(user_dept_df.head(), file=sys.stderr)
+        except Exception as e:
+            print(f"Erreur lors de la lecture de la feuille Effectifs : {str(e)}", file=sys.stderr)
+            return None, None
+        
+        # Vérifier les colonnes nécessaires
+        if 'Unnamed: 0' not in user_dept_df.columns or 'Unnamed: 11' not in user_dept_df.columns:
+            print(f"Erreur: colonnes manquantes dans le fichier. Colonnes attendues: 'Unnamed: 0', 'Unnamed: 11'", file=sys.stderr)
+            print(f"Colonnes trouvées: {user_dept_df.columns.tolist()}", file=sys.stderr)
+            return None, None
+        
+        # Sélectionner et renommer les colonnes
+        try:
+            user_dept_df = user_dept_df[['Unnamed: 0', 'Unnamed: 11']]
+            user_dept_df = user_dept_df.rename(columns={
+                'Unnamed: 0': 'matricule',
+                'Unnamed: 11': 'departement_actuel'
+            })
+            print("\nDonnées après traitement :", file=sys.stderr)
+            print(user_dept_df.head(), file=sys.stderr)
+        except Exception as e:
+            print(f"Erreur lors du traitement des colonnes : {str(e)}", file=sys.stderr)
+            return None, None
+        
+        # Lire le fichier des cours
         dept_courses_df = pd.read_excel(cours_path)
-        user_dept_df = pd.read_excel(users_path)
+        
         return dept_courses_df, user_dept_df
     except Exception as e:
         print(f"Erreur lors du chargement des fichiers Excel : {e}", file=sys.stderr)
@@ -89,29 +125,65 @@ def extract():
     if 'user' not in session or 'password' not in session:
         print("Session utilisateur manquante, redirection vers /login", file=sys.stderr)
         return redirect(url_for('main.login'))
+        
     username = session['user']
     password = session['password']
     print(f"Extraction pour user={username}", file=sys.stderr)
+    
     try:
         data = extract_courses_and_users(username, password)
         print(f"Résultat extraction : {data}", file=sys.stderr)
+        
         if not data:
             flash("Aucune donnée extraite ou identifiants incorrects.", "danger")
             return render_template('extract.html', graph_html=None, graph_completion_html=None, data=None)
+        
         # Générer le graphique Plotly pour le nombre d'utilisateurs
         cours = [d['cours'] for d in data]
         users = [d['users'] for d in data]
         fig = go.Figure([go.Bar(x=cours, y=users)])
-        fig.update_layout(title="Nombre d'utilisateurs par cours", xaxis_title="Cours", yaxis_title="Utilisateurs", xaxis_tickangle=-45)
+        fig.update_layout(title="Nombre d'utilisateurs par cours", 
+                         xaxis_title="Cours", 
+                         yaxis_title="Utilisateurs", 
+                         xaxis_tickangle=-45)
         graph_html = pio.to_html(fig, full_html=False)
+        
         # Générer le graphique Plotly pour le taux de complétion
-        taux = [d['taux_completion'] if isinstance(d['taux_completion'], (int, float)) or (isinstance(d['taux_completion'], str) and d['taux_completion'].replace('.', '', 1).isdigit()) else None for d in data]
-        taux = [float(t) if t not in (None, 'N/A') and str(t).replace('.', '', 1).isdigit() else None for t in taux]
+        taux = [d['taux_completion'] if isinstance(d['taux_completion'], (int, float)) or 
+                (isinstance(d['taux_completion'], str) and d['taux_completion'].replace('.', '', 1).isdigit()) 
+                else None for d in data]
+        taux = [float(t) if t not in (None, 'N/A') and str(t).replace('.', '', 1).isdigit() 
+                else None for t in taux]
+        
         fig2 = go.Figure([go.Bar(x=cours, y=taux)])
-        fig2.update_layout(title="Taux de complétion (%) par cours", xaxis_title="Cours", yaxis_title="Taux de complétion (%)", xaxis_tickangle=-45)
+        fig2.update_layout(title="Taux de complétion (%) par cours", 
+                          xaxis_title="Cours", 
+                          yaxis_title="Taux de complétion (%)", 
+                          xaxis_tickangle=-45)
         graph_completion_html = pio.to_html(fig2, full_html=False)
+        
+        # Charger les données des utilisateurs et départements
+        _, user_dept_df = load_department_mappings()
+        if user_dept_df is not None:
+            users_departments = user_dept_df.to_dict('records')
+            print("\nDonnées envoyées au template :", file=sys.stderr)
+            print(f"Nombre d'utilisateurs : {len(users_departments)}", file=sys.stderr)
+            print("Premiers utilisateurs :", file=sys.stderr)
+            for user in users_departments[:5]:
+                print(user, file=sys.stderr)
+        else:
+            users_departments = []
+            print("Aucune donnée d'utilisateurs à envoyer au template", file=sys.stderr)
+            flash("Impossible de charger les données des départements", "warning")
+
         session['last_data'] = data  # Pour export Excel
-        return render_template('extract.html', graph_html=graph_html, graph_completion_html=graph_completion_html, data=data, cours_data_json=json.dumps(data))
+        return render_template('extract.html', 
+                            graph_html=graph_html, 
+                            graph_completion_html=graph_completion_html, 
+                            data=data, 
+                            cours_data_json=json.dumps(data),
+                            users_departments=users_departments)
+                            
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
@@ -206,6 +278,7 @@ def export_excel():
     if not data:
         flash("Aucune donnée à exporter.", "danger")
         return redirect(url_for('main.extract'))
+        
     df = pd.DataFrame(data)
     output = io.BytesIO()
 
@@ -237,16 +310,24 @@ def export_excel():
     plt.close()
     img2.seek(0)
 
+    # Créer le fichier Excel avec les graphiques
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Statistiques')
         workbook = writer.book
         worksheet = writer.sheets['Statistiques']
+        
         # Insérer les images sous le tableau
         row_offset = len(df) + 3
-        worksheet.insert_image(row_offset, 0, 'users.png', {'image_data': img1, 'x_scale': 0.8, 'y_scale': 0.8})
-        worksheet.insert_image(row_offset + 22, 0, 'completion.png', {'image_data': img2, 'x_scale': 0.8, 'y_scale': 0.8})
+        worksheet.insert_image(row_offset, 0, 'users.png', 
+                             {'image_data': img1, 'x_scale': 0.8, 'y_scale': 0.8})
+        worksheet.insert_image(row_offset + 22, 0, 'completion.png', 
+                             {'image_data': img2, 'x_scale': 0.8, 'y_scale': 0.8})
+                             
     output.seek(0)
-    return send_file(output, download_name='statistiques_cours.xlsx', as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    return send_file(output, 
+                    download_name='statistiques_cours.xlsx', 
+                    as_attachment=True, 
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @bp.route('/notes')
 def notes():
@@ -265,21 +346,29 @@ def logout():
 def get_enrolled_users():
     if 'user' not in session or 'password' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
+        
     data = request.get_json()
     course_url = data.get('course_url')
     if not course_url:
         return jsonify({'error': 'Missing course_url'}), 400
-    # Correction : extraire l'ID du cours et construire l'URL users
+        
+    # Extraire l'ID du cours et construire l'URL users
     match = re.search(r'/course/(\d+)', course_url)
     if not match:
         return jsonify({'error': 'Invalid course_url'}), 400
+        
     course_id = match.group(1)
     users_url = f'https://elearning.sebn.com/courses/edit/{course_id}/action/users/from-dashboard/1'
+    
     from app.scraper import extract_users_from_course
     try:
-        users = extract_users_from_course(session['user'], session['password'], users_url, headless=False)
+        users = extract_users_from_course(session['user'], 
+                                        session['password'], 
+                                        users_url, 
+                                        headless=False)
         if users is None:
             return jsonify({'error': 'Scraping failed'}), 500
+            
         return jsonify({'users': users})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
