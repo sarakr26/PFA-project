@@ -85,32 +85,35 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        cours_file = request.files.get('cours_file')
+        users_file = request.files.get('users_file')
         
         print(f"Tentative de connexion avec username={username}", file=sys.stderr)
         
-        if not username or not password:
-            error = "Veuillez remplir le nom d'utilisateur et le mot de passe."
-            return render_template('login.html', error=error)
-
-        # Gérer le fichier s'il est fourni
-        users_file = request.files.get('users_file')
-        if users_file:
+        if username and password and cours_file and users_file:
             try:
                 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
                 os.makedirs(data_dir, exist_ok=True)
+                
+                # Sauvegarder les fichiers Excel
+                cours_path = os.path.join(data_dir, 'departement_cours.xlsx')
                 users_path = os.path.join(data_dir, 'utilisateurs_departements.xlsx')
                 users_file.save(users_path)
-                print(f"Fichier Excel sauvegardé dans {data_dir}", file=sys.stderr)
+                
+                print(f"Fichiers Excel sauvegardés dans {data_dir}", file=sys.stderr)
+                
+                session['user'] = username
+                session['password'] = password
+                session['files_uploaded'] = True
+                
+                print("Redirection vers /extract", file=sys.stderr)
+                return redirect(url_for('main.extract'))
             except Exception as e:
+                error = f"Erreur lors de la sauvegarde des fichiers : {str(e)}"
                 print(f"Erreur lors de la sauvegarde : {e}", file=sys.stderr)
-                # Continue même si le fichier n'a pas pu être sauvegardé
-        
-        session['user'] = username
-        session['password'] = password
-        
-        print("Redirection vers /extract", file=sys.stderr)
-        return redirect(url_for('main.extract'))
-            
+        else:
+            error = "Veuillez remplir tous les champs et déposer les deux fichiers Excel."
+            print("Champs manquants ou fichiers non fournis", file=sys.stderr)
     return render_template('login.html', error=error)
 
 @bp.route('/extract', methods=['GET', 'POST'])

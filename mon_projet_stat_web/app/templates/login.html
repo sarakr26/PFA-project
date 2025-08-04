@@ -142,7 +142,11 @@
                 <label for="password" class="form-label">Mot de passe</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-          
+            <div class="file-input-group">
+                <label for="cours_file" class="file-input-label">Fichier Cours/Departement</label>
+                <input type="file" class="file-input" id="cours_file" name="cours_file" accept=".xlsx,.xls" required>
+                <div class="file-info">Format: Excel (.xlsx, .xls) - Colonnes: departement, cours</div>
+            </div>
             <div class="file-input-group">
                 <label for="users_file" class="file-input-label">Fichier Utilisateurs/Departement</label>
                 <input type="file" class="file-input" id="users_file" name="users_file" accept=".xlsx,.xls">
