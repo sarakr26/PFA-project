@@ -27,6 +27,44 @@
     </div>
     <div class="extract-container" style="margin-right:320px;">
         <h2 class="extract-title">Liste des Utilisateurs par Département</h2>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="department-filter" class="form-label">Filtrer par département:</label>
+                <select id="department-filter" class="form-select">
+                    <option value="">Tous les départements</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}">{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="rows-per-page" class="form-label">Lignes par page:</label>
+                <select id="rows-per-page" class="form-select">
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                    <option value="500">500</option>
+                </select>
+            </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center">
+                <span class="me-2">Showing</span>
+                <select id="start-range" class="form-select form-select-sm" style="width: auto;">
+                    {% for i in range(1, total_rows + 1, 10) %}
+                    <option value="{{ i }}">{{ i }}-{{ i + 9 }}</option>
+                    {% endfor %}
+                </select>
+                <span class="ms-2">out of {{ total_rows }}</span>
+            </div>
+            <div class="pagination-controls">
+                <button class="btn btn-sm btn-outline-secondary me-2" id="prev-page">&lt;</button>
+                <button class="btn btn-sm btn-outline-secondary" id="next-page">&gt;</button>
+            </div>
+        </div>
         <table class="table table-bordered table-striped mt-4">
             <thead class="table-primary">
                 <tr>
@@ -113,6 +151,96 @@
     </div>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script>
+    // Gestion du tableau des utilisateurs par département
+    document.addEventListener('DOMContentLoaded', function() {
+        const table = document.querySelector('.table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const departmentFilter = document.getElementById('department-filter');
+        const rowsPerPage = document.getElementById('rows-per-page');
+        const startRange = document.getElementById('start-range');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        let currentPage = 1;
+
+        function updatePagination(filteredRows) {
+            const limit = parseInt(rowsPerPage.value);
+            const totalPages = Math.ceil(filteredRows.length / limit);
+            
+            // Mettre à jour le sélecteur de plage
+            startRange.innerHTML = '';
+            for (let i = 0; i < filteredRows.length; i += limit) {
+                const end = Math.min(i + limit, filteredRows.length);
+                const option = document.createElement('option');
+                option.value = i + 1;
+                option.textContent = `${i + 1}-${end}`;
+                option.selected = currentPage === Math.floor(i / limit) + 1;
+                startRange.appendChild(option);
+            }
+
+            // Activer/désactiver les boutons de pagination
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages;
+        }
+
+        function filterTable() {
+            const selectedDepartment = departmentFilter.value.toLowerCase();
+            const limit = parseInt(rowsPerPage.value);
+            const start = (currentPage - 1) * limit;
+            
+            // Filtrer d'abord par département
+            const filteredRows = rows.filter(row => {
+                const department = row.cells[1].textContent.toLowerCase();
+                return !selectedDepartment || department === selectedDepartment;
+            });
+
+            // Appliquer la pagination
+            rows.forEach(row => row.style.display = 'none');
+            filteredRows.slice(start, start + limit).forEach(row => row.style.display = '');
+
+            // Mettre à jour la pagination
+            updatePagination(filteredRows);
+        }
+
+        departmentFilter.addEventListener('change', function() {
+            currentPage = 1;
+            filterTable();
+        });
+
+        rowsPerPage.addEventListener('change', function() {
+            currentPage = 1;
+            filterTable();
+        });
+
+        startRange.addEventListener('change', function() {
+            currentPage = Math.floor((parseInt(this.value) - 1) / parseInt(rowsPerPage.value)) + 1;
+            filterTable();
+        });
+
+        prevPageBtn.addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                filterTable();
+            }
+        });
+
+        nextPageBtn.addEventListener('click', function() {
+            const filteredRows = rows.filter(row => {
+                const department = row.cells[1].textContent.toLowerCase();
+                return !departmentFilter.value || department === departmentFilter.value.toLowerCase();
+            });
+            const totalPages = Math.ceil(filteredRows.length / parseInt(rowsPerPage.value));
+            
+            if (currentPage < totalPages) {
+                currentPage++;
+                filterTable();
+            }
+        });
+
+        // Initial filter application
+        filterTable();
+    });
+
     // Récupérer les données du tableau pour filtrage
     const coursData = {{ cours_data_json|safe }};
 
@@ -179,13 +307,74 @@
             if (data.error) {
                 document.getElementById('course-content').innerHTML = `<div class='alert alert-danger'>Erreur : ${data.error}</div>`;
             } else if (data.users && data.users.length > 0) {
+                // Collecter tous les départements uniques
+                const departments = [...new Set(data.users.map(u => u.departement).filter(Boolean))].sort();
+                
                 let html = `<div class='alert alert-success'>Utilisateurs inscrits pour <strong>${courseName}</strong> :</div>`;
-                html += `<table class='table table-bordered'><thead><tr><th>N°</th><th>Nom</th><th>Matricule</th></tr></thead><tbody>`;
-                for (let i = 0; i < data.users.length; i++) {
-                    const u = data.users[i];
-                    html += `<tr><td>${i + 1}</td><td>${u.full_name || ''}</td><td>${u.matricule || ''}</td></tr>`;
+                
+                // Ajouter le filtre de département
+                html += `
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="course-dept-filter" class="form-label">Filtrer par département:</label>
+                            <select id="course-dept-filter" class="form-select">
+                                <option value="">Tous les départements</option>
+                                ${departments.map(dept => `<option value="${dept}">${dept}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="course-rows-per-page" class="form-label">Lignes par page:</label>
+                            <select id="course-rows-per-page" class="form-select">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>`;
+
+                html += `<table class='table table-bordered'>
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Nom</th>
+                            <th>Matricule</th>
+                            <th>Département</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                
+                const usersArray = Array.from(data.users);
+                window.currentCourseUsers = usersArray; // Stocker les utilisateurs pour le filtrage
+
+                for (let i = 0; i < usersArray.length; i++) {
+                    const u = usersArray[i];
+                    html += `<tr>
+                        <td>${i + 1}</td>
+                        <td>${u.full_name || ''}</td>
+                        <td>${u.matricule || ''}</td>
+                        <td>${u.departement || ''}</td>
+                    </tr>`;
                 }
                 html += `</tbody></table>`;
+                
+                // Ajouter la pagination
+                html += `
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <span>Affichage de </span>
+                        <select id="course-page-select" class="form-select d-inline-block mx-2" style="width: auto">
+                            <option value="1">1-10</option>
+                        </select>
+                        <span>sur ${usersArray.length} entrées</span>
+                    </div>
+                    <div>
+                        <button id="course-prev-page" class="btn btn-sm btn-outline-secondary">&lt;</button>
+                        <button id="course-next-page" class="btn btn-sm btn-outline-secondary ms-2">&gt;</button>
+                    </div>
+                </div>`;
                 document.getElementById('course-content').innerHTML = html;
             } else {
                 document.getElementById('course-content').innerHTML = `<div class='alert alert-warning'>Aucun utilisateur inscrit trouvé pour ce cours.</div>`;
@@ -195,6 +384,85 @@
             document.getElementById('course-content').innerHTML = `<div class='alert alert-danger'>Erreur lors de la récupération des utilisateurs.</div>`;
         });
     }
+    // Fonction pour filtrer et paginer les utilisateurs du cours
+    function filterAndPaginateCourseUsers() {
+        const courseContent = document.getElementById('course-content');
+        const table = courseContent.querySelector('table');
+        if (!table || !window.currentCourseUsers) return;
+
+        const tbody = table.querySelector('tbody');
+        const deptFilter = document.getElementById('course-dept-filter');
+        const rowsPerPage = document.getElementById('course-rows-per-page');
+        const pageSelect = document.getElementById('course-page-select');
+        const prevBtn = document.getElementById('course-prev-page');
+        const nextBtn = document.getElementById('course-next-page');
+
+        const selectedDept = deptFilter.value;
+        const limit = parseInt(rowsPerPage.value);
+        const currentPage = parseInt(pageSelect.value);
+
+        // Filtrer les utilisateurs
+        const filteredUsers = window.currentCourseUsers.filter(user => 
+            !selectedDept || user.departement === selectedDept
+        );
+
+        // Calculer la pagination
+        const totalPages = Math.ceil(filteredUsers.length / limit);
+        const start = (currentPage - 1) * limit;
+        const end = Math.min(start + limit, filteredUsers.length);
+
+        // Mettre à jour le sélecteur de page
+        pageSelect.innerHTML = '';
+        for (let i = 0; i < filteredUsers.length; i += limit) {
+            const pageEnd = Math.min(i + limit, filteredUsers.length);
+            const option = document.createElement('option');
+            option.value = Math.floor(i / limit) + 1;
+            option.textContent = `${i + 1}-${pageEnd}`;
+            option.selected = (i === start);
+            pageSelect.appendChild(option);
+        }
+
+        // Activer/désactiver les boutons de pagination
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage >= totalPages;
+
+        // Mettre à jour le tableau
+        tbody.innerHTML = '';
+        filteredUsers.slice(start, end).forEach((u, i) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${start + i + 1}</td>
+                <td>${u.full_name || ''}</td>
+                <td>${u.matricule || ''}</td>
+                <td>${u.departement || ''}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // Gestionnaire d'événements pour le filtre et la pagination du cours
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('#course-prev-page')) {
+            const pageSelect = document.getElementById('course-page-select');
+            if (pageSelect && pageSelect.selectedIndex > 0) {
+                pageSelect.selectedIndex--;
+                filterAndPaginateCourseUsers();
+            }
+        } else if (e.target.matches('#course-next-page')) {
+            const pageSelect = document.getElementById('course-page-select');
+            if (pageSelect && pageSelect.selectedIndex < pageSelect.options.length - 1) {
+                pageSelect.selectedIndex++;
+                filterAndPaginateCourseUsers();
+            }
+        }
+    });
+
+    document.addEventListener('change', function(e) {
+        if (e.target.matches('#course-dept-filter, #course-rows-per-page, #course-page-select')) {
+            filterAndPaginateCourseUsers();
+        }
+    });
+
     document.querySelectorAll('.course-link, .course-slide-btn').forEach(function(el) {
         el.addEventListener('click', function(e) {
             e.preventDefault();

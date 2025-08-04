@@ -85,38 +85,32 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        cours_file = request.files.get('cours_file')
-        users_file = request.files.get('users_file')
         
         print(f"Tentative de connexion avec username={username}", file=sys.stderr)
         
-        if username and password and cours_file and users_file:
+        if not username or not password:
+            error = "Veuillez remplir le nom d'utilisateur et le mot de passe."
+            return render_template('login.html', error=error)
+
+        # Gérer le fichier s'il est fourni
+        users_file = request.files.get('users_file')
+        if users_file:
             try:
-                # Créer le dossier data s'il n'existe pas
                 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
                 os.makedirs(data_dir, exist_ok=True)
-                
-                # Sauvegarder les fichiers Excel
-                cours_path = os.path.join(data_dir, 'departement_cours.xlsx')
                 users_path = os.path.join(data_dir, 'utilisateurs_departements.xlsx')
-                
-                cours_file.save(cours_path)
                 users_file.save(users_path)
-                
-                print(f"Fichiers Excel sauvegardés dans {data_dir}", file=sys.stderr)
-                
-                session['user'] = username
-                session['password'] = password
-                session['files_uploaded'] = True
-                
-                print("Redirection vers /extract", file=sys.stderr)
-                return redirect(url_for('main.extract'))
+                print(f"Fichier Excel sauvegardé dans {data_dir}", file=sys.stderr)
             except Exception as e:
-                error = f"Erreur lors de la sauvegarde des fichiers : {str(e)}"
                 print(f"Erreur lors de la sauvegarde : {e}", file=sys.stderr)
-        else:
-            error = "Veuillez remplir tous les champs et déposer les deux fichiers Excel."
-            print("Champs manquants ou fichiers non fournis", file=sys.stderr)
+                # Continue même si le fichier n'a pas pu être sauvegardé
+        
+        session['user'] = username
+        session['password'] = password
+        
+        print("Redirection vers /extract", file=sys.stderr)
+        return redirect(url_for('main.extract'))
+            
     return render_template('login.html', error=error)
 
 @bp.route('/extract', methods=['GET', 'POST'])
@@ -177,12 +171,17 @@ def extract():
             flash("Impossible de charger les données des départements", "warning")
 
         session['last_data'] = data  # Pour export Excel
+        # Obtenir la liste unique des départements
+        departments = sorted(list(set(user_dept_df['departement_actuel'].dropna().unique())))
+
         return render_template('extract.html', 
                             graph_html=graph_html, 
                             graph_completion_html=graph_completion_html, 
                             data=data, 
                             cours_data_json=json.dumps(data),
-                            users_departments=users_departments)
+                            users_departments=users_departments,
+                            departments=departments,
+                            total_rows=len(users_departments) if users_departments else 0)
                             
     except Exception as e:
         import traceback
@@ -368,7 +367,17 @@ def get_enrolled_users():
                                         headless=False)
         if users is None:
             return jsonify({'error': 'Scraping failed'}), 500
-            
+
+        # Merge department info by matricule
+        _, user_dept_df = load_department_mappings()
+        dept_map = {}
+        if user_dept_df is not None:
+            dept_map = {str(row['matricule']).strip(): row['departement_actuel'] for _, row in user_dept_df.iterrows()}
+
+        for u in users:
+            mat = str(u.get('matricule', '')).strip()
+            u['departement'] = dept_map.get(mat, '')
+
         return jsonify({'users': users})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
