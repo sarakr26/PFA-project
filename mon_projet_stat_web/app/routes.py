@@ -64,7 +64,9 @@ def load_department_mappings():
                 'Unnamed: 0': 'matricule',
                 'Unnamed: 11': 'departement_actuel'
             })
-            print("\nDonnées après traitement :", file=sys.stderr)
+            # Filtrer les matricules contenant "Trainer"
+            user_dept_df = user_dept_df[~user_dept_df['matricule'].astype(str).str.contains('Trainer', case=False)]
+            print("\nDonnées après traitement et filtrage des Trainers:", file=sys.stderr)
             print(user_dept_df.head(), file=sys.stderr)
         except Exception as e:
             print(f"Erreur lors du traitement des colonnes : {str(e)}", file=sys.stderr)
@@ -85,12 +87,11 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        cours_file = request.files.get('cours_file')
         users_file = request.files.get('users_file')
         
         print(f"Tentative de connexion avec username={username}", file=sys.stderr)
         
-        if username and password and cours_file and users_file:
+        if username and password and users_file:
             try:
                 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
                 os.makedirs(data_dir, exist_ok=True)
@@ -112,7 +113,7 @@ def login():
                 error = f"Erreur lors de la sauvegarde des fichiers : {str(e)}"
                 print(f"Erreur lors de la sauvegarde : {e}", file=sys.stderr)
         else:
-            error = "Veuillez remplir tous les champs et déposer les deux fichiers Excel."
+            error = "Veuillez remplir tous les champs et déposer le fichier Excel des utilisateurs."
             print("Champs manquants ou fichiers non fournis", file=sys.stderr)
     return render_template('login.html', error=error)
 
@@ -370,8 +371,9 @@ def get_enrolled_users():
                                         headless=False)
         if users is None:
             return jsonify({'error': 'Scraping failed'}), 500
-
-        # Merge department info by matricule
+            
+        # Filtrer les utilisateurs qui ont "Trainer" dans leur matricule
+        users = [user for user in users if not str(user.get('matricule', '')).lower().__contains__('trainer')]        # Merge department info by matricule
         _, user_dept_df = load_department_mappings()
         dept_map = {}
         if user_dept_df is not None:
