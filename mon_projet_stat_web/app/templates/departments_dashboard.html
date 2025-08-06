@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard des Départements</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #fff;
+            border-radius: 1.2rem;
+            box-shadow: 0 4px 16px rgba(78,84,200,0.08);
+        }
+        .dashboard-title {
+            text-align: center;
+            color: #4e54c8;
+            font-weight: 700;
+            margin-bottom: 2rem;
+        }
+        .department-card {
+            background: #f8f9fa;
+            border-radius: 0.8rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .department-card:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        .department-card.active {
+            background: #4e54c8;
+            color: white;
+        }
+        .stats-section {
+            margin-top: 2rem;
+        }
+        .progress {
+            height: 8px;
+            margin-top: 0.5rem;
+        }
+        .dept-details {
+            display: none;
+        }
+        .dept-details.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="dashboard-container">
+        <h2 class="dashboard-title">Statistiques par Département</h2>
+        
+        <div class="row">
+            <!-- Liste des départements -->
+            <div class="col-md-4">
+                <div class="departments-list">
+                    {% for dept in departments %}
+                    <div class="department-card" data-dept="{{ dept }}">
+                        <h4>{{ dept }}</h4>
+                        <div class="dept-summary">
+                            <small>{{ dept_stats[dept].total_users }} utilisateurs au total</small>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: {{ dept_stats[dept].avg_completion }}%"
+                                     aria-valuenow="{{ dept_stats[dept].avg_completion }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small>{{ dept_stats[dept].avg_completion }}% de complétion moyenne</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Détails du département -->
+            <div class="col-md-8">
+                <div id="dept-details" class="stats-section">
+                    <div class="alert alert-info">
+                        Sélectionnez un département pour voir ses statistiques détaillées
+                    </div>
+                </div>
+
+                {% for dept in departments %}
+                <div class="dept-details" id="dept-{{ dept|replace(' ', '_') }}">
+                    <h3>{{ dept }}</h3>
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h5>Total Utilisateurs</h5>
+                                    <p class="h2">{{ dept_stats[dept].total_users }}</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h5>Complétion Moyenne</h5>
+                                    <p class="h2">{{ dept_stats[dept].avg_completion }}%</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h5>Nombre de Cours</h5>
+                                    <p class="h2">{{ dept_stats[dept].courses|length }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>Cours</th>
+                                    <th>Utilisateurs</th>
+                                    <th>Complétés</th>
+                                    <th>Taux de Complétion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for course in dept_stats[dept].courses %}
+                                <tr>
+                                    <td>{{ course.cours }}</td>
+                                    <td>{{ course.users }}</td>
+                                    <td>{{ course.completed }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 style="width: {{ course.taux_completion }}%"
+                                                 aria-valuenow="{{ course.taux_completion }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                                {{ course.taux_completion }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('main.extract') }}" class="btn btn-outline-primary">Retour à l'extraction</a>
+            <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger ms-2">Déconnexion</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deptCards = document.querySelectorAll('.department-card');
+            const deptDetails = document.querySelectorAll('.dept-details');
+            
+            // Fonction pour afficher les détails d'un département
+            function showDepartmentDetails(deptName) {
+                // Cacher tous les détails
+                deptDetails.forEach(det => det.classList.remove('active'));
+                // Retirer la classe active de toutes les cartes
+                deptCards.forEach(card => card.classList.remove('active'));
+                
+                // Afficher les détails du département sélectionné
+                const detailsElement = document.getElementById(`dept-${deptName.replace(/ /g, '_')}`);
+                if (detailsElement) {
+                    detailsElement.classList.add('active');
+                }
+                
+                // Ajouter la classe active à la carte sélectionnée
+                const selectedCard = document.querySelector(`.department-card[data-dept="${deptName}"]`);
+                if (selectedCard) {
+                    selectedCard.classList.add('active');
+                }
+            }
+            
+            // Ajouter les écouteurs d'événements sur les cartes
+            deptCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const deptName = this.getAttribute('data-dept');
+                    showDepartmentDetails(deptName);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -194,6 +194,164 @@ def extract():
         flash(f"Erreur lors de l'extraction : {e}", "danger")
         return render_template('extract.html', graph_html=None, graph_completion_html=None, data=None)
 
+@bp.route('/analyze_all_courses', methods=['POST'])
+def analyze_all_courses():
+    """Route pour analyser tous les cours et leurs utilisateurs par département"""
+    if 'user' not in session or 'password' not in session:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+    try:
+        # Charger les mappings départementaux
+        _, user_dept_df = load_department_mappings()
+        if user_dept_df is None:
+            return jsonify({'success': False, 'error': 'Impossible de charger les données des départements'})
+
+        # Créer le mapping matricule -> département
+        dept_map = {str(row['matricule']).strip(): row['departement_actuel'] 
+                   for _, row in user_dept_df.iterrows()}
+
+        # Récupérer la liste des cours
+        courses = session.get('last_data', [])
+        if not courses:
+            return jsonify({'success': False, 'error': 'Aucun cours trouvé'})
+
+        # Pour chaque cours, obtenir les utilisateurs et leurs départements
+        courses_analysis = []
+        for course in courses:
+            if not course.get('lien'):
+                continue
+
+            # Extraire l'ID du cours et construire l'URL users
+            match = re.search(r'/course/(\d+)', course['lien'])
+            if not match:
+                continue
+
+            course_id = match.group(1)
+            users_url = f'https://elearning.sebn.com/courses/edit/{course_id}/action/users/from-dashboard/1'
+
+            # Extraire les utilisateurs
+            from app.scraper import extract_users_from_course
+            users = extract_users_from_course(session['user'], 
+                                           session['password'], 
+                                           users_url, 
+                                           headless=True)
+
+            if users is None:
+                continue
+
+            # Compter les utilisateurs par département
+            dept_counts = {}
+            for user in users:
+                mat = str(user.get('matricule', '')).strip()
+                dept = dept_map.get(mat, 'Unknown')
+                dept_counts[dept] = dept_counts.get(dept, 0) + 1
+
+            course_data = {
+                'cours': course['cours'],
+                'departments': dept_counts,
+                'total': len(users)
+            }
+            courses_analysis.append(course_data)
+
+        # Sauvegarder l'analyse dans la session
+        session['courses_analysis'] = courses_analysis
+        session['departments_list'] = sorted(list(set(user_dept_df['departement_actuel'].dropna().unique())))
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"Erreur lors de l'analyse globale : {str(e)}", file=sys.stderr)
+        return jsonify({'success': False, 'error': str(e)})
+
+@bp.route('/global_analysis')
+def global_analysis():
+    """Page d'analyse globale des cours"""
+    if 'user' not in session:
+        return redirect(url_for('main.login'))
+
+    courses_data = session.get('courses_analysis', [])
+    departments = session.get('departments_list', [])
+
+    return render_template('global_analysis.html',
+                         courses_data=courses_data,
+                         departments=departments)
+
+def extract():
+    print("Début de la route /extract", file=sys.stderr)
+    if 'user' not in session or 'password' not in session:
+        print("Session utilisateur manquante, redirection vers /login", file=sys.stderr)
+        return redirect(url_for('main.login'))
+        
+    username = session['user']
+    password = session['password']
+    print(f"Extraction pour user={username}", file=sys.stderr)
+    
+    try:
+        data = extract_courses_and_users(username, password)
+        print(f"Résultat extraction : {data}", file=sys.stderr)
+        
+        if not data:
+            flash("Aucune donnée extraite ou identifiants incorrects.", "danger")
+            return render_template('extract.html', graph_html=None, graph_completion_html=None, data=None)
+        
+        # Générer le graphique Plotly pour le nombre d'utilisateurs
+        cours = [d['cours'] for d in data]
+        users = [d['users'] for d in data]
+        fig = go.Figure([go.Bar(x=cours, y=users)])
+        fig.update_layout(title="Nombre d'utilisateurs par cours", 
+                         xaxis_title="Cours", 
+                         yaxis_title="Utilisateurs", 
+                         xaxis_tickangle=-45)
+        graph_html = pio.to_html(fig, full_html=False)
+        
+        # Générer le graphique Plotly pour le taux de complétion
+        taux = [d['taux_completion'] if isinstance(d['taux_completion'], (int, float)) or 
+                (isinstance(d['taux_completion'], str) and d['taux_completion'].replace('.', '', 1).isdigit()) 
+                else None for d in data]
+        taux = [float(t) if t not in (None, 'N/A') and str(t).replace('.', '', 1).isdigit() 
+                else None for t in taux]
+        
+        fig2 = go.Figure([go.Bar(x=cours, y=taux)])
+        fig2.update_layout(title="Taux de complétion (%) par cours", 
+                          xaxis_title="Cours", 
+                          yaxis_title="Taux de complétion (%)", 
+                          xaxis_tickangle=-45)
+        graph_completion_html = pio.to_html(fig2, full_html=False)
+        
+        # Charger les données des utilisateurs et départements
+        _, user_dept_df = load_department_mappings()
+        if user_dept_df is not None:
+            users_departments = user_dept_df.to_dict('records')
+            print("\nDonnées envoyées au template :", file=sys.stderr)
+            print(f"Nombre d'utilisateurs : {len(users_departments)}", file=sys.stderr)
+            print("Premiers utilisateurs :", file=sys.stderr)
+            for user in users_departments[:5]:
+                print(user, file=sys.stderr)
+        else:
+            users_departments = []
+            print("Aucune donnée d'utilisateurs à envoyer au template", file=sys.stderr)
+            flash("Impossible de charger les données des départements", "warning")
+
+        session['last_data'] = data  # Pour export Excel
+        # Obtenir la liste unique des départements
+        departments = sorted(list(set(user_dept_df['departement_actuel'].dropna().unique())))
+
+        return render_template('extract.html', 
+                            graph_html=graph_html, 
+                            graph_completion_html=graph_completion_html, 
+                            data=data, 
+                            cours_data_json=json.dumps(data),
+                            users_departments=users_departments,
+                            departments=departments,
+                            total_rows=len(users_departments) if users_departments else 0)
+                            
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"Erreur lors de l'extraction : {e}\n{tb}", file=sys.stderr)
+        flash(f"Erreur lors de l'extraction : {e}", "danger")
+        return render_template('extract.html', graph_html=None, graph_completion_html=None, data=None)
+
 @bp.route('/dashboard')
 def dashboard():
     """Dashboard organisé par département"""
@@ -386,3 +544,69 @@ def get_enrolled_users():
         return jsonify({'users': users})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/departments-dashboard')
+def departments_dashboard():
+    """Dashboard des départements"""
+    if 'user' not in session:
+        return redirect(url_for('main.login'))
+
+    # Récupérer les données e-learning
+    data = session.get('last_data', [])
+    
+    if not data:
+        flash("Aucune donnée disponible. Veuillez d'abord extraire les données.", "danger")
+        return redirect(url_for('main.extract'))
+
+    # Liste fixe des départements
+    departments = ['IT', 'PCP', 'PGM', 'PHR', 'PLM', 'PPE', 'PPM', 'PPR', 'PQM', 'PTS']
+    dept_stats = {}
+    
+    # Charger les données des utilisateurs et départements
+    _, user_dept_df = load_department_mappings()
+    if user_dept_df is None:
+        flash("Impossible de charger les données des départements", "warning")
+        return redirect(url_for('main.extract'))
+
+    # Calculer le nombre total d'utilisateurs par département depuis le fichier Excel
+    dept_users_count = user_dept_df['departement_actuel'].value_counts().to_dict()
+    
+    # Pour chaque département, calculer les statistiques
+    for dept in departments:
+        dept_courses = []
+        total_weighted_completion = 0
+        total_users = dept_users_count.get(dept, 0)  # Nombre total d'utilisateurs du département
+        courses_for_dept = []
+        
+        for course in data:
+            dept_users = [u for u in course.get('users_list', []) 
+                         if u.get('departement') == dept]
+            
+            if dept_users:  # Si des utilisateurs de ce département sont dans ce cours
+                completed = len([u for u in dept_users if u.get('completed', False)])
+                users_count = len(dept_users)
+                taux = (completed / users_count * 100) if users_count > 0 else 0
+                
+                dept_courses.append({
+                    'cours': course['cours'],
+                    'users': users_count,
+                    'completed': completed,
+                    'taux_completion': round(taux, 2)
+                })
+                
+                courses_for_dept.append(course['cours'])
+                total_weighted_completion += taux * users_count
+        
+        # Calculer la moyenne pondérée du taux de complétion
+        avg_completion = (total_weighted_completion / len(dept_courses)) if dept_courses else 0
+        
+        dept_stats[dept] = {
+            'courses': dept_courses,
+            'total_users': total_users,  # Nombre total d'utilisateurs du département
+            'avg_completion': round(avg_completion, 2),
+            'courses_list': sorted(courses_for_dept)  # Liste des cours du département
+        }
+
+    return render_template('departments_grid.html',
+                         departments=sorted(departments),
+                         dept_stats=dept_stats)

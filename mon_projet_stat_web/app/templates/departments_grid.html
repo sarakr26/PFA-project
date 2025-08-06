@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard des Départements</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #fff;
+            border-radius: 1.2rem;
+            box-shadow: 0 4px 16px rgba(78,84,200,0.08);
+        }
+        .dashboard-title {
+            text-align: center;
+            color: #4e54c8;
+            font-weight: 700;
+            margin-bottom: 2rem;
+        }
+        .departments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .department-card {
+            background: #f8f9fa;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+        .department-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(78,84,200,0.12);
+            border-color: #4e54c8;
+        }
+        .department-card.active {
+            background: #4e54c8;
+            color: white;
+        }
+        .department-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        .department-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .department-stats {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+        .stat-item {
+            margin-bottom: 0.5rem;
+        }
+        .progress {
+            height: 8px;
+            margin-top: 0.5rem;
+        }
+        .details-section {
+            display: none;
+            margin-top: 2rem;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+        .details-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .department-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #4e54c8;
+            color: white;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .card-hover-effect:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="dashboard-container">
+        <h2 class="dashboard-title">Statistiques par Département</h2>
+        
+        <div class="departments-grid">
+            {% for dept in departments %}
+            <div class="department-card card-hover-effect" data-dept="{{ dept }}">
+                <div class="department-icon">{{ dept[:2] }}</div>
+                <div class="department-name">{{ dept }}</div>
+                {% if dept in dept_stats %}
+                <div class="department-stats">
+                    <div class="stat-item">
+                        <small>Utilisateurs totaux</small>
+                        <h4>{{ dept_stats[dept].total_users }}</h4>
+                    </div>
+                    <div class="stat-item">
+                        <small>Taux de complétion moyen</small>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ dept_stats[dept].avg_completion }}%"
+                                 aria-valuenow="{{ dept_stats[dept].avg_completion }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                {{ dept_stats[dept].avg_completion }}%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <small>Nombre de cours</small>
+                        <h4>{{ dept_stats[dept].courses|length }}</h4>
+                    </div>
+                </div>
+                {% else %}
+                <div class="department-stats">
+                    <p>Aucune donnée disponible</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% for dept in departments %}
+        {% if dept in dept_stats %}
+        <div class="details-section" id="details-{{ dept }}">
+            <h3>Détails pour le département {{ dept }}</h3>
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Utilisateurs</h5>
+                            <p class="card-text h2">{{ dept_stats[dept].total_users }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Taux de Complétion Moyen</h5>
+                            <p class="card-text h2">{{ dept_stats[dept].avg_completion }}%</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Nombre de Cours</h5>
+                            <p class="card-text h2">{{ dept_stats[dept].courses|length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Cours disponibles</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for cours in dept_stats[dept].courses_list %}
+                        <li class="list-group-item">{{ cours }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>Cours</th>
+                            <th>Utilisateurs</th>
+                            <th>Complétés</th>
+                            <th>Taux de Complétion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in dept_stats[dept].courses %}
+                        <tr>
+                            <td>{{ course.cours }}</td>
+                            <td>{{ course.users }}</td>
+                            <td>{{ course.completed }}</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {{ course.taux_completion }}%"
+                                         aria-valuenow="{{ course.taux_completion }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ course.taux_completion }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('main.extract') }}" class="btn btn-outline-primary">Retour à l'extraction</a>
+            <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger ms-2">Déconnexion</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const departmentCards = document.querySelectorAll('.department-card');
+            const detailsSections = document.querySelectorAll('.details-section');
+
+            function showDepartmentDetails(deptName) {
+                // Cacher toutes les sections de détails
+                detailsSections.forEach(section => {
+                    section.classList.remove('active');
+                });
+
+                // Retirer la classe active de toutes les cartes
+                departmentCards.forEach(card => {
+                    card.classList.remove('active');
+                });
+
+                // Afficher les détails du département sélectionné
+                const detailsSection = document.getElementById(`details-${deptName}`);
+                if (detailsSection) {
+                    detailsSection.classList.add('active');
+                    // Faire défiler jusqu'aux détails
+                    detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                // Activer la carte sélectionnée
+                const selectedCard = document.querySelector(`.department-card[data-dept="${deptName}"]`);
+                if (selectedCard) {
+                    selectedCard.classList.add('active');
+                }
+            }
+
+            // Ajouter les écouteurs d'événements sur les cartes
+            departmentCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const deptName = this.getAttribute('data-dept');
+                    showDepartmentDetails(deptName);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
