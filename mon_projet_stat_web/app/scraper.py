@@ -40,23 +40,33 @@ def extract_users_from_course(username, password, course_url, headless=True):
         driver.get("https://elearning.sebn.com/start")
         wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".ef-course-card")))
 
-        # Extraire l'ID du cours depuis course_url
+        # Extraire l'ID du cours depuis course_url et construire l'URL correcte
         import re
         match = re.search(r'/edit/(\d+)/', course_url)
         if match:
             course_id = match.group(1)
         else:
             match = re.search(r'/course/(\d+)', course_url)
-            course_id = match.group(1) if match else None
+            if match:
+                course_id = match.group(1)
+            else:
+                match = re.search(r'/(\d+)/', course_url)
+                course_id = match.group(1) if match else None
 
-        if course_id:
-            # Chercher le lien du cours dans le dashboard et cliquer dessus
-            try:
-                course_link = driver.find_element(By.CSS_SELECTOR, f'a[href*="/cstart/course/{course_id}"]')
-                course_link.click()
-                time.sleep(2)  # attendre le chargement
-            except Exception as e:
-                print(f"[Selenium] Impossible de cliquer sur le cours dans le dashboard : {e}", file=sys.stderr)
+        if not course_id:
+            print(f"[Selenium] Impossible d'extraire l'ID du cours depuis l'URL : {course_url}", file=sys.stderr)
+            return None
+
+        # Construction de l'URL correcte pour accéder aux utilisateurs du cours
+        users_url = f'https://elearning.sebn.com/courses/edit/{course_id}/action/users/from-dashboard/1'
+        
+        # Accéder directement à la page des utilisateurs
+        try:
+            driver.get(users_url)
+            time.sleep(2)  # attendre le chargement
+        except Exception as e:
+            print(f"[Selenium] Impossible d'accéder à la page des utilisateurs : {e}", file=sys.stderr)
+            return None
 
         # Aller sur la page users du cours
         driver.get(course_url)
@@ -120,7 +130,20 @@ def extract_users_from_course(username, password, course_url, headless=True):
                         else:
                             name = name_text
                             matricule = ""
-                        all_users.append({"full_name": name, "matricule": matricule})
+                        
+                        # Récupérer le statut de l'utilisateur
+                        try:
+                            status_td = row.find_element(By.CSS_SELECTOR, "td[data-name='status']")
+                            status = status_td.find_element(By.CSS_SELECTOR, ".ef-grid-cell-edit-value").text.strip()
+                        except:
+                            status = "Unknown"
+                        
+                        user_data = {
+                            "full_name": name,
+                            "matricule": matricule,
+                            "status": status
+                        }
+                        all_users.append(user_data)
                     except Exception as e:
                         print(f"[Selenium] Erreur lors de l'extraction d'un utilisateur: {str(e)}", file=sys.stderr)
                         continue
@@ -147,12 +170,13 @@ def extract_courses_and_users(username, password, headless=False):
         options.add_argument('--disable-gpu')
     
     driver = webdriver.Edge(service=Service("C:/WebDriver/msedgedriver.exe"), options=options)
-    wait = WebDriverWait(driver, 15)
+    wait = WebDriverWait(driver, 30)  # Augmentation du timeout à 30 secondes
     results = []
     
     try:
         print("[Selenium] Aller à la page de login", file=sys.stderr)
-        driver.get("https://elearning.sebn.com/")
+        driver.get("https://elearning.sebn.com/login")  # URL de login directe
+        time.sleep(2)  # Attendre le chargement complet
         print("[Selenium] Remplir le formulaire de login", file=sys.stderr)
         wait.until(EC.presence_of_element_located((By.NAME, "login")))
         driver.find_element(By.NAME, "login").send_keys(username)
