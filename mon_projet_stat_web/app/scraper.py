@@ -41,32 +41,57 @@ def extract_users_from_course(username, password, course_url, headless=True):
         wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".ef-course-card")))
 
         # Extraire l'ID du cours depuis course_url et construire l'URL correcte
-        import re
-        match = re.search(r'/edit/(\d+)/', course_url)
-        if match:
-            course_id = match.group(1)
+        print(f"[Selenium] URL du cours reçue : {course_url}", file=sys.stderr)
+        
+        # Vérifier si nous avons déjà l'ID dans l'URL
+        if isinstance(course_url, str) and course_url.isdigit():
+            course_id = course_url
         else:
-            match = re.search(r'/course/(\d+)', course_url)
-            if match:
-                course_id = match.group(1)
-            else:
-                match = re.search(r'/(\d+)/', course_url)
-                course_id = match.group(1) if match else None
-
+            import re
+            # Essayer différents patterns d'URL
+            patterns = [
+                r'/edit/(\d+)/',
+                r'/course/(\d+)',
+                r'/(\d+)/',
+                r'courses/edit/(\d+)',
+                r'course_id=(\d+)'
+            ]
+            
+            course_id = None
+            for pattern in patterns:
+                match = re.search(pattern, str(course_url))
+                if match:
+                    course_id = match.group(1)
+                    print(f"[Selenium] ID du cours trouvé : {course_id}", file=sys.stderr)
+                    break
+                    
         if not course_id:
             print(f"[Selenium] Impossible d'extraire l'ID du cours depuis l'URL : {course_url}", file=sys.stderr)
             return None
 
         # Construction de l'URL correcte pour accéder aux utilisateurs du cours
         users_url = f'https://elearning.sebn.com/courses/edit/{course_id}/action/users/from-dashboard/1'
+        print(f"[Selenium] Tentative d'accès à l'URL des utilisateurs : {users_url}", file=sys.stderr)
         
         # Accéder directement à la page des utilisateurs
         try:
             driver.get(users_url)
-            time.sleep(2)  # attendre le chargement
+            print("[Selenium] Page des utilisateurs chargée", file=sys.stderr)
+            # Attendre que le tableau des utilisateurs soit présent
+            wait.until(EC.presence_of_element_located((By.ID, "usersTable")))
+            time.sleep(2)  # attendre le chargement complet
         except Exception as e:
             print(f"[Selenium] Impossible d'accéder à la page des utilisateurs : {e}", file=sys.stderr)
-            return None
+            # Essayer une URL alternative
+            alt_url = f'https://elearning.sebn.com/courses/edit/{course_id}/users'
+            print(f"[Selenium] Tentative avec URL alternative : {alt_url}", file=sys.stderr)
+            try:
+                driver.get(alt_url)
+                wait.until(EC.presence_of_element_located((By.ID, "usersTable")))
+                time.sleep(2)
+            except Exception as e2:
+                print(f"[Selenium] Échec également avec l'URL alternative : {e2}", file=sys.stderr)
+                return None
 
         # Aller sur la page users du cours
         driver.get(course_url)
@@ -89,11 +114,13 @@ def extract_users_from_course(username, password, course_url, headless=True):
         except Exception as e:
             print(f"[Selenium] Impossible de sélectionner le max de lignes par page : {e}", file=sys.stderr)
 
-        # Pagination : récupérer toutes les pages
+        # Pagination : récupérer les pages jusqu'à trouver "ENROLL NOW"
         all_users = []
         page_select = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'select.select-page')))
         page_options = page_select.find_elements(By.TAG_NAME, 'option')
         total_pages = len([opt for opt in page_options if opt.get_attribute('value').isdigit()])
+        print(f"[Selenium] Nombre total de pages : {total_pages}", file=sys.stderr)
+        
         for i in range(total_pages):
             try:
                 # Sélectionner la page i
@@ -110,17 +137,27 @@ def extract_users_from_course(username, password, course_url, headless=True):
                         if not tds or len(tds) < 2:
                             continue
                         name_text = tds[0].text.strip()
-                        # Vérifier la présence d'un bouton ou input ENROLLED
-                        enrolled = False
-                        # Vérifier le bouton ENROLLED
-                        enrolled_btn = row.find_elements(By.CSS_SELECTOR, "button, .btn, .enrolled")
-                        if any('ENROLLED' in btn.text for btn in enrolled_btn):
-                            enrolled = True
-                        # Vérifier input[value='Enrolled']
-                        inputs = row.find_elements(By.CSS_SELECTOR, "input[value='Enrolled']")
-                        if inputs:
-                            enrolled = True
-                        if not enrolled:
+                        # Vérifier la présence d'un bouton ou input ENROLLED ou ENROLL NOW
+                        enrollment_status = None
+                        # Vérifier tous les boutons et inputs pour l'inscription
+                        buttons = row.find_elements(By.CSS_SELECTOR, "button, .btn, .enrolled, input[type='button']")
+                        enrollment_found = False
+                        
+                        for btn in buttons:
+                            try:
+                                btn_text = btn.text.upper() if btn.text else btn.get_attribute('value').upper()
+                                if 'ENROLLED' in btn_text:
+                                    enrollment_status = 'enrolled'
+                                    enrollment_found = True
+                                    break
+                                elif 'ENROLL NOW' in btn_text:
+                                    print("[Selenium] 'ENROLL NOW' trouvé - Arrêt de l'extraction pour ce cours", file=sys.stderr)
+                                    return all_users  # Sortir immédiatement car les suivants ne sont pas inscrits
+                            except:
+                                continue
+                        
+                        # Passer à l'utilisateur suivant si pas inscrit
+                        if not enrollment_found:
                             continue
                         # Extraire nom et matricule
                         if "(MASA" in name_text:
