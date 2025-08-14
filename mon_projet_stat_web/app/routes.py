@@ -460,47 +460,43 @@ def global_analysis():
     # Calculer le nombre total d'utilisateurs par département depuis le fichier Excel
     dept_users_count = user_dept_df['departement_actuel'].value_counts().to_dict()
     
-    # Pour chaque département, calculer les statistiques
+    # Pour chaque département, générer la liste des cours où users > 0 dans le tableau global (courses_data)
     for dept in all_departments:
         dept_courses = []
-        total_weighted_completion = 0
         total_users = dept_users_count.get(dept, 0)
-        courses_for_dept = []
-        
-        for course in data:
-            dept_users = [u for u in course.get('users_list', []) 
-                         if u.get('departement') == dept]
-            
-            if dept_users:
-                completed = len([u for u in dept_users if u.get('completed', False)])
-                users_count = len(dept_users)
-                taux = (completed / users_count * 100) if users_count > 0 else 0
-                
+        for course in courses_data:
+            users_in_dept = course['departments'].get(dept, 0)
+            if users_in_dept > 0:
                 dept_courses.append({
                     'cours': course['cours'],
-                    'users': users_count,
-                    'completed': completed,
-                    'taux_completion': round(taux, 2)
+                    'users': users_in_dept,
+                    'completed': 0,  # Optionnel, à remplir si info disponible
+                    'taux_completion': 0  # Optionnel, à remplir si info disponible
                 })
-                
-                courses_for_dept.append(course['cours'])
-                total_weighted_completion += taux * users_count
-        
-        # Calculer la moyenne pondérée du taux de complétion
-        avg_completion = (total_weighted_completion / len(dept_courses)) if dept_courses else 0
-        
         dept_stats[dept] = {
             'courses': dept_courses,
             'total_users': total_users,
-            'avg_completion': round(avg_completion, 2),
-            'courses_list': sorted(courses_for_dept)
+            'courses_with_users': len(dept_courses)
         }
+
+    # Calculer le nombre de cours par département (où users > 0)
+    total_courses_by_dept = {dept: 0 for dept in departments}
+    for dept in departments:
+        for course in courses_data:
+            if course['departments'].get(dept, 0) > 0:
+                total_courses_by_dept[dept] += 1
+
+    # Ajouter le nombre de cours avec utilisateurs à dept_stats
+    for dept in departments:
+        if dept in dept_stats:
+            dept_stats[dept]['courses_with_users'] = total_courses_by_dept[dept]
 
     # Prepare final data for template
     return render_template('global_analysis.html',
                          courses_data=courses_data,
                          departments=departments,
-                         dept_stats=dept_stats)
+                         dept_stats=dept_stats,
+                         total_courses_by_dept=total_courses_by_dept)
 
 def extract():
     print("Début de la route /extract", file=sys.stderr)

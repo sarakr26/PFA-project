@@ -141,21 +141,10 @@
                             <small>Utilisateurs totaux</small>
                             <h4>{{ dept_stats[dept].total_users }}</h4>
                         </div>
-                        <div class="stat-item">
-                            <small>Taux de complétion moyen</small>
-                            <div class="progress">
-                                <div class="progress-bar bg-success" role="progressbar" 
-                                     style="width: {{ dept_stats[dept].avg_completion }}%" 
-                                     aria-valuenow="{{ dept_stats[dept].avg_completion }}" 
-                                     aria-valuemin="0" 
-                                     aria-valuemax="100">
-                                    {{ "%.1f"|format(dept_stats[dept].avg_completion) }}%
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Taux de complétion moyen supprimé -->
                         <div class="stat-item">
                             <small>Nombre de cours</small>
-                            <h4>{{ dept_stats[dept].courses|length }}</h4>
+                            <h4>{{ dept_stats[dept].courses_with_users }}</h4>
                         </div>
                     </div>
                 </div>
@@ -174,19 +163,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Taux de Complétion Moyen</h5>
-                                <p class="card-text h2">{{ "%.1f"|format(dept_stats[dept].avg_completion) }}%</p>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Taux de complétion moyen supprimé dans la section détails -->
                     <div class="col-md-4">
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Nombre de Cours</h5>
-                                <p class="card-text h2">{{ dept_stats[dept].courses|length }}</p>
+                                <p class="card-text h2">{{ dept_stats[dept].courses_with_users }}</p>
                             </div>
                         </div>
                     </div>
@@ -211,8 +193,6 @@
                             <tr>
                                 <th>Cours</th>
                                 <th>Utilisateurs</th>
-                                <th>Complétés</th>
-                                <th>Taux de Complétion</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -220,8 +200,6 @@
                             <tr>
                                 <td>{{ course.cours }}</td>
                                 <td>{{ course.users }}</td>
-                                <td>{{ course.completed }}</td>
-                                <td>{{ "%.1f"|format(course.taux_completion) }}%</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -261,6 +239,14 @@
                         <td>{{ course.total }}</td>
                     </tr>
                     {% endfor %}
+                    <!-- Ligne du nombre de cours par département (où users > 0) -->
+                    <tr style="font-weight:bold; background:#e3e6f7;">
+                        <td>Nombre de cours avec utilisateurs</td>
+                        {% for dept in departments %}
+                        <td>{{ total_courses_by_dept[dept] }}</td>
+                        {% endfor %}
+                        <td></td>
+                    </tr>
                 </tbody>
             </table>
         </div>
