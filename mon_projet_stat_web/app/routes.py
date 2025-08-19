@@ -52,17 +52,25 @@ def load_department_mappings():
             return None, None
         
         # Vérifier les colonnes nécessaires
-        if 'Unnamed: 0' not in user_dept_df.columns or 'Unnamed: 11' not in user_dept_df.columns:
-            print(f"Erreur: colonnes manquantes dans le fichier. Colonnes attendues: 'Unnamed: 0', 'Unnamed: 11'", file=sys.stderr)
+        required_cols = ['Unnamed: 0', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 4', 'Unnamed: 11', 'Unnamed: 13', 'Unnamed: 16']
+        missing_cols = [col for col in required_cols if col not in user_dept_df.columns]
+        if missing_cols:
+            print(f"Erreur: colonnes manquantes dans le fichier. Colonnes attendues: {required_cols}", file=sys.stderr)
             print(f"Colonnes trouvées: {user_dept_df.columns.tolist()}", file=sys.stderr)
+            print(f"Colonnes manquantes: {missing_cols}", file=sys.stderr)
             return None, None
-        
-        # Sélectionner et renommer les colonnes
+
+        # Sélectionner et renommer les colonnes demandées
         try:
-            user_dept_df = user_dept_df[['Unnamed: 0', 'Unnamed: 11']]
+            user_dept_df = user_dept_df[required_cols]
             user_dept_df = user_dept_df.rename(columns={
                 'Unnamed: 0': 'matricule',
-                'Unnamed: 11': 'departement_actuel'
+                'Unnamed: 1': 'nom',
+                'Unnamed: 2': 'prenom',
+                'Unnamed: 4': 'projet_actuel',
+                'Unnamed: 11': 'departement_actuel',
+                'Unnamed: 13': 'fonction_actuelle',
+                'Unnamed: 16': 'type_contrat'
             })
             # Filtrer les matricules contenant "Trainer"
             user_dept_df = user_dept_df[~user_dept_df['matricule'].astype(str).str.contains('Trainer', case=False)]

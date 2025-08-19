@@ -1,6 +1,6 @@
 body {
     min-height: 100vh;
-    background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+    background: linear-gradient(135deg, #397ec1, #397ec1 100%);
     font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
 }
 
@@ -12,7 +12,7 @@ body {
 }
 
 h3, h2 {
-    color: #4e54c8;
+    color: #2e6eab;
     font-weight: 700;
     letter-spacing: 1px;
 }
@@ -35,7 +35,7 @@ h3, h2 {
     box-shadow: 0 2px 8px rgba(78,84,200,0.08);
 }
 .table th {
-    background: #4e54c8;
+    background: #2e6eab;
     color: #fff;
     font-weight: 600;
     border: none;
