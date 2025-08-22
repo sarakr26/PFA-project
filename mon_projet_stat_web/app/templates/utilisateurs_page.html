@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Liste des Utilisateurs par Département</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/extract.css') }}">
+</head>
+<body class="bg-light">
+    <header class="main-header">
+        <div class="header-logo">
+            <img src="{{ url_for('static', filename='img/image_droite.png') }}" alt="Logo" style="height:48px;">
+        </div>
+        <div class="header-actions">
+            <nav class="header-nav">
+                <a href="{{ url_for('main.extract') }}">Cours</a>
+                <a href="{{ url_for('main.utilisateurs') }}">Utilisateurs</a>
+                <a href="{{ url_for('main.global_analysis') }}">Départements</a>
+            </nav>
+            <div class="header-logout">
+                <a href="{{ url_for('main.logout') }}">Déconnexion</a>
+            </div>
+        </div>
+    </header>
+    <div class="extract-container" style="max-width:1200px;margin:40px auto 0 auto;">
+        {% include 'utilisateurs.html' %}
+    </div>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="{{ url_for('static', filename='js/extract.js') }}"></script>
+</body>
+</html>

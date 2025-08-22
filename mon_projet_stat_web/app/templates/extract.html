@@ -1,3 +1,15 @@
+    <aside class="course-slider-container-modern" style="margin-top: 80px;position:fixed;right:0;top:0;width:320px;height:100vh;background:#2e6eab;color:#fff;padding:2rem 1rem;z-index:1000;overflow-y:auto;display:flex;flex-direction:column;gap:1.5rem;box-shadow:-2px 0 12px rgba(78,84,200,0.08);">
+        <h3 style="color:#fff;text-align:center;margin-bottom:1rem;">Choisissez un cours</h3>
+        <ul class="course-list" style="list-style:none;padding:0;margin:0;">
+            {% for row in data %}
+            <li style="margin-bottom:1rem;">
+                <a href="#" class="course-link" data-cours="{{ row.cours }}" data-lien="{{ row.lien }}" style="color:#fff;text-decoration:none;font-weight:500;display:block;padding:0.75rem 1rem;border-radius:0.5rem;background:rgba(255,255,255,0.08);transition:background 0.2s;">
+                    {{ row.cours }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </aside>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -15,7 +27,7 @@
     <div class="header-actions">
         <nav class="header-nav">
             <a href="{{ url_for('main.extract') }}">Cours</a>
-            <a href="{{ url_for('main.extract') }}#users-graph">Utilisateurs</a>
+            <a href="{{ url_for('main.utilisateurs') }}">Utilisateurs</a>
             <a href="{{ url_for('main.global_analysis') }}">Départements</a>
         </nav>
         <div class="header-logout">
@@ -23,111 +35,9 @@
         </div>
     </div>
 </header>
-    <div class="course-slider-container">
-        <h3>Choisissez un cours</h3>
+    <div class="extract-container">
         
-        <ul class="course-list">
-            {% for row in data %}
-            <li><a href="#" class="course-link" data-cours="{{ row.cours }}" data-lien="{{ row.lien }}">{{ row.cours }}</a></li>
-            {% endfor %}
-        </ul>
-    </div>
-    <div class="extract-container" style="margin-right:320px;">
-        <h2 class="extract-title">Liste des Utilisateurs par Département</h2>
-        <div class="row mb-3">
-            <div class="col-md-3">
-                <label for="department-filter" class="form-label">Filtrer par département:</label>
-                <select id="department-filter" class="form-select">
-                    <option value="">Tous les départements</option>
-                    {% for dept in departments %}
-                    <option value="{{ dept }}">{{ dept }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="projet-filter" class="form-label">Filtrer par projet actuel:</label>
-                <select id="projet-filter" class="form-select">
-                    <option value="">Tous les projets</option>
-                    {% for user in users_departments|unique(attribute='projet_actuel') %}
-                    {% if user.projet_actuel %}
-                    <option value="{{ user.projet_actuel }}">{{ user.projet_actuel }}</option>
-                    {% endif %}
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="contrat-filter" class="form-label">Filtrer par type de contrat:</label>
-                <select id="contrat-filter" class="form-select">
-                    <option value="">Tous les contrats</option>
-                    {% for user in users_departments|unique(attribute='type_contrat') %}
-                    {% if user.type_contrat %}
-                    <option value="{{ user.type_contrat }}">{{ user.type_contrat }}</option>
-                    {% endif %}
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="rows-per-page" class="form-label">Lignes par page:</label>
-                <select id="rows-per-page" class="form-select">
-                    <option value="10">10</option>
-                    <option value="15">15</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                    <option value="500">500</option>
-                </select>
-            </div>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="d-flex align-items-center">
-                <span class="me-2">Showing</span>
-                <select id="start-range" class="form-select form-select-sm" style="width: auto;">
-                    {% for i in range(1, total_rows + 1, 10) %}
-                    <option value="{{ i }}">{{ i }}-{{ i + 9 }}</option>
-                    {% endfor %}
-                </select>
-                <span class="ms-2">out of {{ total_rows }}</span>
-            </div>
-            <div class="pagination-controls">
-                <button class="btn btn-sm btn-outline-secondary me-2" id="prev-page">&lt;</button>
-                <button class="btn btn-sm btn-outline-secondary" id="next-page">&gt;</button>
-            </div>
-        </div>
-        <table class="table table-bordered table-striped mt-4">
-            <thead class="table-primary">
-                <tr>
-                    <th>Matricule</th>
-                    <th>Nom</th>
-                    <th>Prénom</th>
-                    <th>Projet Actuel</th>
-                    <th>Fonction Actuelle</th>
-                    <th>Type de contrat</th>
-                    <th>Département Actuel</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if users_departments %}
-                    {% for user in users_departments %}
-                    <tr>
-                        <td>{{ user.matricule }}</td>
-                        <td>{{ user.nom }}</td>
-                        <td>{{ user.prenom }}</td>
-                        <td>{{ user.projet_actuel }}</td>
-                        <td>{{ user.fonction_actuelle }}</td>
-                        <td>{{ user.type_contrat }}</td>
-                        <td>{{ user.departement_actuel }}</td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="7" class="text-center">Aucune donnée disponible</td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
-        
-        <h2 class="extract-title">Statistiques des utilisateurs par cours</h2>
+    <h2 class="dashboard-title text-center mb-4">Statistiques des utilisateurs par cours</h2>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
@@ -144,35 +54,37 @@
             <div id="completion-graph">{{ graph_completion_html|safe }}</div>
         {% endif %}
         {% if data %}
-        <table class="table table-bordered table-striped mt-4">
-            <thead class="table-primary">
-                <tr>
-                    <th>Cours</th>
-                    <th>Nombre d'utilisateurs</th>
-                    <th>Complétés</th>
-                    <th>Taux de complétion (%)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in data %}
-                <tr>
-                    <td>{{ row.cours }}</td>
-                    <td>{{ row.users }}</td>
-                    <td>{{ row.completed }}</td>
-                    <td>{% if row.taux_completion != 'N/A' %}{{ row.taux_completion }}{% else %}-{% endif %}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive analysis-container" style="box-shadow: 0 4px 18px 0 rgba(80, 112, 255, 0.08); background: #fff; border-radius: 16px; margin-top: 2.5rem;">
+            <table class="table table-bordered table-striped">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Cours</th>
+                        <th>Nombre d'utilisateurs</th>
+                        <th>Complétés</th>
+                        <th>Taux de complétion (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr>
+                        <td>{{ row.cours }}</td>
+                        <td>{{ row.users }}</td>
+                        <td>{{ row.completed }}</td>
+                        <td>{% if row.taux_completion != 'N/A' %}{{ row.taux_completion }}{% else %}-{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% endif %}
         <div id="course-content"></div>
-        <div class="text-center mt-4">
+        <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-4">
             <a href="{{ url_for('main.logout') }}" class="btn btn-outline-primary">Déconnexion</a>
             {% if data %}
-            <a href="{{ url_for('main.export_excel') }}" class="btn btn-success ml-2">Exporter en Excel</a>
-            <a href="{{ url_for('main.dashboard') }}" class="btn btn-info ml-2">📊 Dashboard par Département</a>
-            <a href="{{ url_for('main.departments_dashboard') }}" class="btn btn-primary ml-2">🏛️ Vue Détaillée des Départements</a>
-            <a href="{{ url_for('main.global_analysis') }}" class="btn btn-warning ml-2">🔍 Analyse Globale des Cours</a>
+            <a href="{{ url_for('main.export_excel') }}" class="btn btn-success">Exporter en Excel</a>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-info">📊 Dashboard par Département</a>
+            <a href="{{ url_for('main.departments_dashboard') }}" class="btn btn-primary">🏛️ Vue Détaillée des Départements</a>
+            <a href="{{ url_for('main.global_analysis') }}" class="btn btn-warning">🔍 Analyse Globale des Cours</a>
             {% endif %}
         </div>
     </div>

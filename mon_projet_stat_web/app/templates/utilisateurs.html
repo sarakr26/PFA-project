@@ -1,0 +1,97 @@
+<h2 class="extract-title">Liste des Utilisateurs par Département</h2>
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label for="department-filter" class="form-label">Filtrer par département:</label>
+        <select id="department-filter" class="form-select">
+            <option value="">Tous les départements</option>
+            {% for dept in departments %}
+            <option value="{{ dept }}">{{ dept }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="projet-filter" class="form-label">Filtrer par projet actuel:</label>
+        <select id="projet-filter" class="form-select">
+            <option value="">Tous les projets</option>
+            {% for user in users_departments|unique(attribute='projet_actuel') %}
+            {% if user.projet_actuel %}
+            <option value="{{ user.projet_actuel }}">{{ user.projet_actuel }}</option>
+            {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="contrat-filter" class="form-label">Filtrer par type de contrat:</label>
+        <select id="contrat-filter" class="form-select">
+            <option value="">Tous les contrats</option>
+            {% for user in users_departments|unique(attribute='type_contrat') %}
+            {% if user.type_contrat %}
+            <option value="{{ user.type_contrat }}">{{ user.type_contrat }}</option>
+            {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="rows-per-page" class="form-label">Lignes par page:</label>
+        <select id="rows-per-page" class="form-select">
+            <option value="10">10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+        </select>
+    </div>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center">
+        <span class="me-2">Showing</span>
+        <select id="start-range" class="form-select form-select-sm" style="width: auto;">
+            {% for i in range(1, total_rows + 1, 10) %}
+            <option value="{{ i }}">{{ i }}-{{ i + 9 }}</option>
+            {% endfor %}
+        </select>
+        <span class="ms-2">out of {{ total_rows }}</span>
+    </div>
+    <div class="pagination-controls">
+        <button class="btn btn-sm btn-outline-secondary me-2" id="prev-page">&lt;</button>
+        <button class="btn btn-sm btn-outline-secondary" id="next-page">&gt;</button>
+    </div>
+</div>
+<div class="analysis-container">
+<div class="table-responsive">
+<table class="table table-bordered table-hover text-center align-middle">
+    <thead class="table-primary ">
+        <tr>
+            <th class="text-center align-middle" style="vertical-align: middle;">Matricule</th>
+            <th class="text-center align-middle" style="vertical-align: middle;">Nom</th>
+            <th class="text-center align-middle" style="vertical-align: middle;">Prénom</th>
+            <th class="text-center align-middle" style="vertical-align: middle;">Projet Actuel</th>
+            <th class="text-center align-middle" style="vertical-align: middle;">Fonction Actuelle</th>
+            <th class="text-center align-middle" style="vertical-align: middle;">Type de contrat</th>
+            <th class="text-center align-middle" style="vertical-align: middle;">Département Actuel</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if users_departments %}
+            {% for user in users_departments %}
+            <tr>
+                <td>{{ user.matricule }}</td>
+                <td>{{ user.nom }}</td>
+                <td>{{ user.prenom }}</td>
+                <td>{{ user.projet_actuel }}</td>
+                <td>{{ user.fonction_actuelle }}</td>
+                <td>{{ user.type_contrat }}</td>
+                <td>{{ user.departement_actuel }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="7" class="text-center align-middle">Aucune donnée disponible</td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+</div>
+</div>

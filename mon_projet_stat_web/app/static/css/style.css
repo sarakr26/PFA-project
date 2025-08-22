@@ -29,20 +29,48 @@ h3, h2 {
 }
 
 .table {
-    background: white;
-    border-radius: 1rem;
+       background: #f8f9fa;
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(78,84,200,0.08);
+    box-shadow: 0 4px 18px 0 rgba(80, 112, 255, 0.08);
+    margin-top: 2.5rem;
+    font-size: 1.08rem;
 }
-.table th {
-    background: #2e6eab;
-    color: #fff;
+
+
+.analysis-container th, .analysis-container td {
+    text-align: center;
+    vertical-align: middle !important;
+    padding: 0.7rem 0.5rem;
+}
+.analysis-container th {
+    color: #2e6eab;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    font-size: 1.08rem;
+    background: #e3e6f7 !important;
+    border-bottom: 2px solid #dbe2ef;
+}
+.analysis-container tbody tr {
+    transition: background 0.15s;
+}
+.analysis-container tbody tr:hover {
+    background: #f4f6fb;
+}
+.analysis-container tr[style*="font-weight:bold"] {
+    background: #e3e6f7 !important;
+    color: #2e6eab;
+    font-size: 1.12rem;
+}
+.analysis-container td {
+    border-color: #e3e6f7 !important;
+}
+.analysis-container td:first-child {
     font-weight: 600;
-    border: none;
-}
-.table td {
-    border: none;
-    color: #333;
+    color: #3a3f51;
+    text-align: left;
+    background: #f4f6fb;
+    border-right: 1px solid #e3e6f7;
 }
 
 .navbar {

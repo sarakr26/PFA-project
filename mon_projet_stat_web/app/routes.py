@@ -86,7 +86,7 @@ def load_department_mappings():
         return dept_courses_df, user_dept_df
     except Exception as e:
         print(f"Erreur lors du chargement des fichiers Excel : {e}", file=sys.stderr)
-        return None, None
+    return None, None
 
 @bp.route('/', methods=['GET', 'POST'])
 @bp.route('/login', methods=['GET', 'POST'])
@@ -201,6 +201,29 @@ def extract():
         print(f"Erreur lors de l'extraction : {e}\n{tb}", file=sys.stderr)
         flash(f"Erreur lors de l'extraction : {e}", "danger")
         return render_template('extract.html', graph_html=None, graph_completion_html=None, data=None)
+
+# Route pour afficher uniquement la liste des utilisateurs par département
+@bp.route('/utilisateurs', methods=['GET'])
+def utilisateurs():
+    if 'user' not in session or 'password' not in session:
+        return redirect(url_for('main.login'))
+    try:
+        _, user_dept_df = load_department_mappings()
+        if user_dept_df is not None:
+            users_departments = user_dept_df.to_dict('records')
+            departments = sorted(list(set(user_dept_df['departement_actuel'].dropna().unique())))
+        else:
+            users_departments = []
+            departments = []
+        return render_template('utilisateurs_page.html',
+                              users_departments=users_departments,
+                              departments=departments,
+                              total_rows=len(users_departments) if users_departments else 0)
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"Erreur lors de l'affichage des utilisateurs : {e}\n{tb}", file=sys.stderr)
+        return render_template('utilisateurs_page.html', users_departments=[], departments=[], total_rows=0)
 
 @bp.route('/analyze_all_courses', methods=['POST'])
 def analyze_all_courses():
@@ -378,7 +401,7 @@ def global_analysis():
                         'cours': course['cours'],
                         'users': users_in_dept,
                         'completed': 0,  # We'll update this if available
-                        'taux_completion': 0.0  # We'll update this if available
+                        'taux_completion': 0  # We'll update this if available
                     })
                     total_users += users_in_dept
 
