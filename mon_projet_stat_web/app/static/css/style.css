@@ -18,14 +18,14 @@ h3, h2 {
 }
 
 .btn-primary {
-    background: linear-gradient(90deg, #4e54c8 0%, #8f94fb 100%);
+    background: linear-gradient(90deg, #2e6eab 0%, #397ec1 100%);
     border: none;
     font-weight: 600;
     box-shadow: 0 2px 8px rgba(78,84,200,0.15);
     transition: background 0.3s;
 }
 .btn-primary:hover {
-    background: linear-gradient(90deg, #8f94fb 0%, #4e54c8 100%);
+    background: linear-gradient(90deg, #397ec1 0%, #2e6eab 100%);
 }
 
 .table {
