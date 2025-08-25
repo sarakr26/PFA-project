@@ -144,28 +144,70 @@ def extract():
             flash("Aucune donnée extraite ou identifiants incorrects.", "danger")
             return render_template('extract.html', graph_html=None, graph_completion_html=None, data=None)
         
-        # Générer le graphique Plotly pour le nombre d'utilisateurs
-        cours = [d['cours'] for d in data]
-        users = [d['users'] for d in data]
-        fig = go.Figure([go.Bar(x=cours, y=users)])
-        fig.update_layout(title="Nombre d'utilisateurs par cours", 
-                         xaxis_title="Cours", 
-                         yaxis_title="Utilisateurs", 
-                         xaxis_tickangle=-45)
+        # Générer le graphique Plotly pour le nombre d'utilisateurs avec design et couleurs personnalisées
+        # Trier les cours par nombre d'utilisateurs décroissant
+        sorted_data = sorted(data, key=lambda d: d['users'] if isinstance(d['users'], (int, float)) else 0, reverse=True)
+        cours = [d['cours'] for d in sorted_data]
+        users = [d['users'] for d in sorted_data]
+        colors = ['#2e6eab', '#397ec1']
+        bar_colors = [colors[i % 2] for i in range(len(cours))]
+        fig = go.Figure([go.Bar(x=cours, y=users, marker=dict(color=bar_colors, line=dict(color='#1f2647', width=1)),
+                                hoverinfo='x+y',
+                                text=users,
+                                textposition='auto',
+                                opacity=0.92)])
+        fig.update_layout(
+            title={
+                'text': "Nombre d'utilisateurs par cours",
+                'x':0.5,
+                'xanchor': 'center',
+                'font': dict(size=22, color='#2e6eab', family='Arial Black')
+            },
+            xaxis_title="Cours",
+            yaxis_title="Utilisateurs",
+            xaxis_tickangle=-45,
+            plot_bgcolor='#fff',
+            paper_bgcolor='#fff',
+            font=dict(family='Arial', size=14, color='#2d2d4d'),
+            margin=dict(l=40, r=30, t=70, b=80),
+            bargap=0.25,
+            showlegend=False,
+        )
+        fig.update_xaxes(showgrid=False, linecolor='#2e6eab')
+        fig.update_yaxes(gridcolor='#e3eaf7', zerolinecolor='#2e6eab')
         graph_html = pio.to_html(fig, full_html=False)
-        
-        # Générer le graphique Plotly pour le taux de complétion
+
+        # Générer le graphique Plotly pour le taux de complétion avec design et couleurs personnalisées
         taux = [d['taux_completion'] if isinstance(d['taux_completion'], (int, float)) or 
                 (isinstance(d['taux_completion'], str) and d['taux_completion'].replace('.', '', 1).isdigit()) 
                 else None for d in data]
         taux = [float(t) if t not in (None, 'N/A') and str(t).replace('.', '', 1).isdigit() 
                 else None for t in taux]
-        
-        fig2 = go.Figure([go.Bar(x=cours, y=taux)])
-        fig2.update_layout(title="Taux de complétion (%) par cours", 
-                          xaxis_title="Cours", 
-                          yaxis_title="Taux de complétion (%)", 
-                          xaxis_tickangle=-45)
+        bar_colors2 = [colors[(i+1) % 2] for i in range(len(cours))]
+        fig2 = go.Figure([go.Bar(x=cours, y=taux, marker=dict(color=bar_colors2, line=dict(color='#1f2647', width=1)),
+                                 hoverinfo='x+y',
+                                 text=[f"{t if t is not None else ''}" for t in taux],
+                                 textposition='auto',
+                                 opacity=0.92)])
+        fig2.update_layout(
+            title={
+                'text': "Taux de complétion (%) par cours",
+                'x':0.5,
+                'xanchor': 'center',
+                'font': dict(size=22, color='#397ec1', family='Arial Black')
+            },
+            xaxis_title="Cours",
+            yaxis_title="Taux de complétion (%)",
+            xaxis_tickangle=-45,
+            plot_bgcolor='#fff',
+            paper_bgcolor='#fff',
+            font=dict(family='Arial', size=14, color='#2d2d4d'),
+            margin=dict(l=40, r=30, t=70, b=80),
+            bargap=0.25,
+            showlegend=False,
+        )
+        fig2.update_xaxes(showgrid=False, linecolor='#397ec1')
+        fig2.update_yaxes(gridcolor='#e3eaf7', zerolinecolor='#397ec1')
         graph_completion_html = pio.to_html(fig2, full_html=False)
         
         # Charger les données des utilisateurs et départements

@@ -1,3 +1,85 @@
+.filter-card .btn.rounded-circle i.bi {
+    color: #2e6eab !important;
+    font-size: 1.5rem !important;
+    width: 1.5em;
+    height: 1.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.filter-card .btn.rounded-circle:disabled i.bi {
+    color: #b0b8c9 !important;
+}
+.filter-card .btn.rounded-circle i {
+    font-size: 1.3rem;
+    line-height: 1;
+    vertical-align: middle;
+    pointer-events: none;
+}
+/* Pagination buttons dans la filter-card */
+.filter-card .btn.rounded-circle {
+        margin-top: 5px;
+    background: #fff;
+    border: 2px solid #2e6eab;
+    color: #2e6eab;
+    margin-left: 0.4rem;
+    margin-right: 0.4rem;
+    box-shadow: 0 2px 8px rgba(46,110,171,0.08);
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.filter-card .btn.rounded-circle:disabled {
+    opacity: 0.5;
+    background: #f4f6fb;
+    color: #b0b8c9;
+    border-color: #e3eaf7;
+}
+.filter-card .btn.rounded-circle:hover:not(:disabled) {
+    background: #2e6eab;
+    color: #fff;
+    border-color: #397ec1;
+}
+.filter-card .row {
+    justify-content: center;
+}
+.filter-card .col-md-4 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.filter-card label.form-label, .filter-card .filter-select {
+    width: 100%;
+    text-align: center;
+}
+/* Carte de filtres pour le tableau des cours */
+.filter-card {
+        margin-top: 10px;
+    padding: 10px;
+    background: #fff;
+    border-radius: 1.2rem;
+    box-shadow: 0 4px 18px 0 rgba(46, 110, 171, 0.10);
+    border: 1px solid #e3eaf7;
+}
+.filter-select {
+    border-radius: 0.7rem;
+    border: 2px solid #2e6eab;
+    background: #f8fbff;
+    font-size: 1.05rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.filter-select:focus {
+    border-color: #397ec1;
+    box-shadow: 0 0 0 2px #397ec133;
+    background: #fff;
+}
+.filter-card label.form-label {
+    padding: 5px;
+    font-weight: 600;
+    color: #2e6eab;
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 1.05rem;
+}
 body {
     min-height: 100vh;
     background: linear-gradient(135deg, #397ec1, #397ec1 100%);
@@ -29,6 +111,7 @@ h3, h2 {
 }
 
 .table {
+    margin-bottom: 10px;
        background: #f8f9fa;
     border-radius: 16px;
     overflow: hidden;

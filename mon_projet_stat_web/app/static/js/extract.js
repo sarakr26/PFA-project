@@ -32,34 +32,39 @@ document.addEventListener('DOMContentLoaded', function() {
 				const departments = [...new Set(data.users.map(u => u.departement).filter(Boolean))].sort();
 				// Récupérer la liste unique des statuts
 				const statuses = [...new Set(data.users.map(u => u.status).filter(Boolean))].sort();
-				// Filtres HTML
+				// Filtres HTML améliorés dans une carte
 				let html = `<div class='alert alert-success'>Utilisateurs inscrits pour <strong>${courseName}</strong> :</div>`;
-				html += `<div class="row mb-3">
-					<div class="col-md-4">
-						<label for="course-dept-filter" class="form-label">Filtrer par département:</label>
-						<select id="course-dept-filter" class="form-select">
-							<option value="">Tous les départements</option>
-							${departments.map(dept => `<option value="${dept}">${dept}</option>`).join('')}
-						</select>
-					</div>
-					<div class="col-md-4">
-						<label for="course-rows-per-page" class="form-label">Lignes par page:</label>
-						<select id="course-rows-per-page" class="form-select">
-							<option value="10">10</option>
-							<option value="25">25</option>
-							<option value="50">50</option>
-							<option value="100">100</option>
-						</select>
-					</div>
-					<div class="col-md-4">
-						<label for="course-status-filter" class="form-label">Filtrer par statut:</label>
-						<select id="course-status-filter" class="form-select">
-							<option value="">Tous les statuts</option>
-							${statuses.map(st => `<option value="${st}">${st}</option>`).join('')}
-						</select>
+				html += `<div class="filter-card mb-3 p-3">
+					<div class="row g-3 align-items-end">
+						<div class="col-md-4">
+							<label for="course-dept-filter" class="form-label"><i class="bi bi-building"></i> Département</label>
+							<select id="course-dept-filter" class="form-select filter-select">
+								<option value="">Tous les départements</option>
+								${departments.map(dept => `<option value="${dept}">${dept}</option>`).join('')}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label for="course-rows-per-page" class="form-label"><i class="bi bi-list-ol"></i> Lignes par page</label>
+							<select id="course-rows-per-page" class="form-select filter-select">
+								<option value="10">10</option>
+								<option value="25">25</option>
+								<option value="50">50</option>
+								<option value="100">100</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label for="course-status-filter" class="form-label"><i class="bi bi-person-badge"></i> Statut</label>
+							<select id="course-status-filter" class="form-select filter-select">
+								<option value="">Tous les statuts</option>
+								${statuses.map(st => `<option value="${st}">${st}</option>`).join('')}
+							</select>
+						</div>
 					</div>
 				</div>`;
-				html += `<div class="table-responsive"><table class='table table-bordered' id='course-users-table'><thead><tr><th>Nom</th><th>Matricule</th><th>Département</th><th>Statut</th></tr></thead><tbody>`;
+				html += `<div class="table-responsive analysis-container course-users-table-container" style="box-shadow: 0 4px 18px 0 rgba(80, 112, 255, 0.08); background: #fff; border-radius: 16px; margin-top: 1.5rem;">
+				<table class='table table-bordered table-striped mb-0' id='course-users-table' style="border-radius: 16px; overflow: hidden;">
+				<thead class="table-primary">
+				<tr><th>Nom</th><th>Matricule</th><th>Département</th><th>Statut</th></tr></thead><tbody>`;
 				data.users.forEach(u => {
 					html += `<tr><td>${u.full_name || ''}</td><td>${u.matricule || ''}</td><td>${u.departement || ''}</td><td>${u.status || ''}</td></tr>`;
 				});
@@ -153,6 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
 	const prevPageBtn = document.getElementById('prev-page');
 	const nextPageBtn = document.getElementById('next-page');
 	const userTable = document.querySelector('.extract-container table');
+	const matriculeSearch = document.getElementById('matricule-search');
 	let allRows = Array.from(userTable.querySelectorAll('tbody tr'));
 	let filteredRows = allRows;
 	let currentPage = 1;
@@ -162,13 +168,15 @@ document.addEventListener('DOMContentLoaded', function() {
 		const dept = departmentFilter.value;
 		const projet = projetFilter.value;
 		const contrat = contratFilter.value;
+		const matricule = matriculeSearch ? matriculeSearch.value.trim().toLowerCase() : '';
 		filteredRows = allRows.filter(row => {
-			// Index: 3 = projet_actuel, 5 = type_contrat, 6 = departement_actuel
+			// Index: 0 = matricule, 3 = projet_actuel, 5 = type_contrat, 6 = departement_actuel
 			if (row.children.length < 7) return true;
 			let matchDept = !dept || row.children[6].textContent.trim() === dept;
 			let matchProjet = !projet || row.children[3].textContent.trim() === projet;
 			let matchContrat = !contrat || row.children[5].textContent.trim() === contrat;
-			return matchDept && matchProjet && matchContrat;
+			let matchMatricule = !matricule || row.children[0].textContent.trim().toLowerCase().includes(matricule);
+			return matchDept && matchProjet && matchContrat && matchMatricule;
 		});
 		currentPage = 1;
 		updatePagination();
@@ -201,6 +209,9 @@ document.addEventListener('DOMContentLoaded', function() {
 	departmentFilter.addEventListener('change', filterRows);
 	projetFilter.addEventListener('change', filterRows);
 	contratFilter.addEventListener('change', filterRows);
+	if (matriculeSearch) {
+		matriculeSearch.addEventListener('input', filterRows);
+	}
 	rowsPerPageSelect.addEventListener('change', function() {
 		currentPage = 1;
 		updatePagination();

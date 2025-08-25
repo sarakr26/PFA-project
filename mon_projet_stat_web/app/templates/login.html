@@ -6,125 +6,7 @@
     <title>Connexion - Plateforme Statistique</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        .login-bg {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #2e6eab 0%, #397ec1 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-panel {
-            background: #fff;
-            border-radius: 1.5rem;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-            padding: 3rem 2.5rem 2.5rem 2.5rem;
-            max-width: 580px;
-            width: 100%;
-        }
-        .login-logo {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 1.2rem;
-        }
-        .login-logo img {
-            max-width: 220px;
-            height: auto;
-        }
-        .login-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #2e6eab;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        .login-subtitle {
-            font-size: 1.1rem;
-            color: #555;
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .form-label {
-            font-weight: bold;
-            color: #2d2d4d;
-            text-transform: uppercase;
-            font-size: 1rem;
-            margin-bottom: 0.2rem;
-            letter-spacing: 0.5px;
-            display: block;
-            text-align: center;
-        }
-        .form-group {
-            margin-bottom: 1.3rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .form-control {
-            border-radius: 0.75rem;
-            font-size: 1.1rem;
-            padding: 0.75rem 1rem;
-            text-align: center;
-            width: 80%;
-            max-width: 320px;
-            margin: 0 auto;
-        }
-        .file-input-group {
-            margin-bottom: 1.3rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .file-input-label {
-            font-weight: bold;
-            color: #2d2d4d;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.5px;
-            display: block;
-            text-align: center;
-        }
-        .file-input {
-            border-radius: 0.75rem;
-            font-size: 0.9rem;
-            padding: 0.5rem;
-            width: 80%;
-            max-width: 320px;
-            margin: 0 auto;
-            border: 2px dashed #2e6eab;
-            background-color: #f8f9fa;
-        }
-        .file-input:focus {
-            outline: none;
-            border-color: #397ec1;
-            background-color: #fff;
-        }
-        .btn-primary {
-            width: 100%;
-            padding: 0.75rem;
-            font-size: 1.1rem;
-            border-radius: 0.75rem;
-        }
-        .login-footer {
-            text-align: center;
-            margin-top: 1.5rem;
-            color: #888;
-            font-size: 0.95rem;
-        }
-        .file-info {
-            font-size: 0.8rem;
-            color: #666;
-            text-align: center;
-            margin-top: 0.5rem;
-        }
-        @media (max-width: 600px) {
-            .login-panel { padding: 1.5rem 0.5rem; }
-            .form-control, .file-input { width: 100%; max-width: 100%; }
-            .login-logo img { max-width: 140px; }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body class="login-bg">
     <div class="login-panel">
@@ -154,8 +36,9 @@
             <button type="submit" class="btn btn-primary">Se connecter</button>
         </form>
         <div class="login-footer">
-            © {{ 2024 }} Plateforme Statistique | Projet automatisé<br>
-            <span style="font-size:0.9em;">Développé dans le cadre du stage - Visualisation & automatisation des données</span>
+        © {{ 2024 }} Plateforme Statistique | Projet automatisé<br>
+        <span style="font-size:0.9em;">Développé dans le cadre du stage - Visualisation & automatisation des données</span>
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
         </div>
     </div>
 </body>
