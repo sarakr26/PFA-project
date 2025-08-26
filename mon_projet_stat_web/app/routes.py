@@ -42,7 +42,7 @@ def load_department_mappings():
         try:
             excel_file = pd.ExcelFile(users_path)
             print(f"Feuilles disponibles : {excel_file.sheet_names}", file=sys.stderr)
-            # Lire en utilisant la première ligne comme en-têtes
+            # Lire en utilisant la première ligne comme en-têtes (ligne 1)
             user_dept_df = pd.read_excel(users_path, sheet_name='Effectifs', header=1)
             print(f"Colonnes trouvées dans le fichier : {user_dept_df.columns.tolist()}", file=sys.stderr)
             print("\nPremières lignes du fichier :", file=sys.stderr)
@@ -72,6 +72,9 @@ def load_department_mappings():
                 'Unnamed: 13': 'fonction_actuelle',
                 'Unnamed: 16': 'type_contrat'
             })
+            # Supprimer la première ligne si elle contient les mêmes valeurs que les noms de colonnes (erreur fréquente avec header décalé)
+            if (user_dept_df.iloc[0] == user_dept_df.columns).all():
+                user_dept_df = user_dept_df.iloc[1:].reset_index(drop=True)
             # Filtrer les matricules contenant "Trainer"
             user_dept_df = user_dept_df[~user_dept_df['matricule'].astype(str).str.contains('Trainer', case=False)]
             print("\nDonnées après traitement et filtrage des Trainers:", file=sys.stderr)
@@ -252,8 +255,12 @@ def utilisateurs():
     try:
         _, user_dept_df = load_department_mappings()
         if user_dept_df is not None:
-            users_departments = user_dept_df.to_dict('records')
+            # Ignorer la première ligne (ligne d'en-tête dupliquée)
+            users_departments = user_dept_df.iloc[1:].to_dict('records')
             departments = sorted(list(set(user_dept_df['departement_actuel'].dropna().unique())))
+            # Supprimer la valeur d'en-tête si présente
+            if 'Département Actuel' in departments:
+                departments.remove('Département Actuel')
         else:
             users_departments = []
             departments = []
