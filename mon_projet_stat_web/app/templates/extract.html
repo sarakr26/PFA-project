@@ -45,39 +45,98 @@
             {% endfor %}
           {% endif %}
         {% endwith %}
-        {% if graph_html %}
-            
-            <div id="users-graph">{{ graph_html|safe }}</div>
-        {% endif %}
+    {# Suppression du graphe des utilisateurs #}
         {% if graph_completion_html %}
             
             <div id="completion-graph">{{ graph_completion_html|safe }}</div>
         {% endif %}
         {% if data %}
-        <div class="table-responsive analysis-container" style="box-shadow: 0 4px 18px 0 rgba(80, 112, 255, 0.08); background: #fff; border-radius: 16px; margin-top: 2.5rem;">
-            <table class="table table-bordered table-striped">
-                <thead class="table-primary">
-                    <tr>
-                        <th>Cours</th>
-                        <th>Nombre d'utilisateurs</th>
-                        <th>Complétés</th>
-                        <th>Taux de complétion (%)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in data %}
-                    <tr>
-                        <td>{{ row.cours }}</td>
-                        <td>{{ row.users }}</td>
-                        <td>{{ row.completed }}</td>
-                        <td>{% if row.taux_completion != 'N/A' %}{{ row.taux_completion }}{% else %}-{% endif %}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="d-flex flex-row gap-4 align-items-start" style="margin-top:2.5rem;">
+            <div class="table-responsive analysis-container" style="flex:2; box-shadow: 0 4px 18px 0 rgba(80, 112, 255, 0.08); background: #fff; border-radius: 16px;">
+                <table class="table table-bordered table-striped">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>Cours</th>
+                            <th>Nombre d'utilisateurs</th>
+                            <th>Complétés</th>
+                            <th>Taux de complétion (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data %}
+                        <tr>
+                            <td>{{ row.cours }}</td>
+                            <td>{{ row.users }}</td>
+                            <td>{{ row.completed }}</td>
+                            <td>{% if row.taux_completion != 'N/A' %}{{ row.taux_completion }}{% else %}-{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div id="extract-distribution-graph" style="flex:1; min-width:340px; min-height:340px; background:#fff; border-radius:16px; box-shadow:0 4px 18px 0 rgba(80,112,255,0.08); padding:1rem;"></div>
         </div>
         {% endif %}
         <div id="course-content"></div>
+        <div id="course-user-graph" style="width:100%; min-height:340px; background:#fff; border-radius:16px; box-shadow:0 4px 18px 0 rgba(80,112,255,0.08); padding:1rem; margin-top:2rem;"></div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Extraire les cours et le nombre d'utilisateurs du tableau principal
+            const table = document.querySelector('.extract-container table');
+            if (!table) return;
+            const rows = table.querySelectorAll('tbody tr');
+            const coursLabels = [];
+            const userCounts = [];
+            rows.forEach(row => {
+                const cours = row.children[0]?.textContent.trim();
+                const users = parseInt(row.children[1]?.textContent.trim(), 10);
+                if (cours && !isNaN(users)) {
+                    coursLabels.push(cours);
+                    userCounts.push(users);
+                }
+            });
+            // Cap bars at 1000, but show real value as label
+            const cappedCounts = userCounts.map(v => v > 1000 ? 1000 : v);
+            const barTexts = userCounts.map(v => v > 1000 ? `+1000` : String(v));
+            const realTexts = userCounts.map(v => v > 1000 ? String(v) : '');
+            const data = [{
+                x: cappedCounts,
+                y: coursLabels,
+                type: 'bar',
+                orientation: 'h',
+                marker: {color: '#2e6eab'},
+                text: barTexts,
+                textposition: 'auto',
+                customdata: realTexts,
+                hovertemplate: '%{y}: %{customdata}<extra></extra>',
+            }];
+            const layout = {
+                title: "Nombre d'utilisateurs par cours",
+                xaxis: { title: "+ d'utilisateurs", range: [0, 1000] },
+                yaxis: { title: 'Cours', automargin: true },
+                margin: { t: 40, l: 60, r: 20, b: 80 }, // valeurs d'origine
+                plot_bgcolor: '#fff',
+                paper_bgcolor: '#fff',
+            };
+            Plotly.newPlot('course-user-graph', data, layout, {responsive:true}).then(() => {
+                cappedCounts.forEach((v, i) => {
+                    if (userCounts[i] > 1000) {
+                        Plotly.relayout('course-user-graph', {
+                            [`annotations[${i}]`]: {
+                                x: 1000,
+                                y: coursLabels[i],
+                                xanchor: 'left',
+                                yanchor: 'middle',
+                                text: `<b>${userCounts[i]}</b>`,
+                                showarrow: false,
+                                font: {color: '#d9534f', size: 14}
+                            }
+                        });
+                    }
+                });
+            });
+        });
+        </script>
         
     </div>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>

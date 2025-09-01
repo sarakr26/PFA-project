@@ -75,6 +75,114 @@ document.addEventListener('DOMContentLoaded', function() {
 					<button class="btn btn-sm btn-outline-secondary" id="course-next-page">&gt;</button>
 				</div>`;
 				document.getElementById('course-content').innerHTML = html;
+				// --- Plotly grouped bar chart for department/status distribution ---
+				function drawExtractDistributionGraph(users) {
+					// Count users by department and status
+					const deptStatusCounts = {};
+					const departments = [...new Set(users.map(u => u.departement).filter(Boolean))].sort();
+					const statuses = [...new Set(users.map(u => u.status).filter(Boolean))].sort();
+					departments.forEach(dept => {
+						deptStatusCounts[dept] = {};
+						statuses.forEach(st => { deptStatusCounts[dept][st] = 0; });
+					});
+					users.forEach(u => {
+						if (u.departement && u.status) {
+							if (!deptStatusCounts[u.departement]) deptStatusCounts[u.departement] = {};
+							if (!deptStatusCounts[u.departement][u.status]) deptStatusCounts[u.departement][u.status] = 0;
+							deptStatusCounts[u.departement][u.status]++;
+						}
+					});
+					const data = statuses.map(st => ({
+						x: departments,
+						y: departments.map(dept => deptStatusCounts[dept][st] || 0),
+						name: st,
+						type: 'bar'
+					}));
+					const layout = {
+						barmode: 'group',
+						title: 'Répartition des utilisateurs par département et statut',
+						xaxis: { title: 'Département' },
+						yaxis: { title: 'Nombre d\'utilisateurs' },
+						legend: { orientation: 'h', y: -0.2 }
+					};
+					Plotly.newPlot('extract-distribution-graph', data, layout, {responsive:true});
+				}
+				// Initial draw
+				drawExtractDistributionGraph(data.users);
+				// Update graph on filter
+				(function() {
+					const table = document.getElementById('course-users-table');
+					if (!table) return;
+					const tbody = table.querySelector('tbody');
+					let allRows = Array.from(tbody.querySelectorAll('tr'));
+					let filteredRows = allRows;
+					let currentPage = 1;
+					let rowsPerPage = 10;
+
+					function filterRows() {
+						const dept = document.getElementById('course-dept-filter').value;
+						const status = document.getElementById('course-status-filter').value;
+						filteredRows = allRows.filter(row => {
+							const tds = row.children;
+							const matchDept = !dept || tds[2].textContent.trim() === dept;
+							const matchStatus = !status || tds[3].textContent.trim() === status;
+							return matchDept && matchStatus;
+						});
+						currentPage = 1;
+						updatePagination();
+						// Update graph with filtered users
+						const filteredUsers = filteredRows.map(row => {
+							return {
+								full_name: row.children[0].textContent,
+								matricule: row.children[1].textContent,
+								departement: row.children[2].textContent,
+								status: row.children[3].textContent
+							};
+						});
+						drawExtractDistributionGraph(filteredUsers);
+					}
+
+					function updatePagination() {
+						rowsPerPage = parseInt(document.getElementById('course-rows-per-page').value);
+						const total = filteredRows.length;
+						const totalPages = Math.ceil(total / rowsPerPage) || 1;
+						if (currentPage > totalPages) currentPage = totalPages;
+						const startIdx = (currentPage - 1) * rowsPerPage;
+						const endIdx = startIdx + rowsPerPage;
+						allRows.forEach(row => row.style.display = 'none');
+						filteredRows.slice(startIdx, endIdx).forEach(row => row.style.display = '');
+						// Pagination info
+						const info = document.getElementById('course-pagination-info');
+						if (info) {
+							info.textContent = `Page ${currentPage} / ${totalPages} (${total} utilisateurs)`;
+						}
+						document.getElementById('course-prev-page').disabled = currentPage === 1;
+						document.getElementById('course-next-page').disabled = currentPage === totalPages;
+					}
+
+					document.getElementById('course-dept-filter').addEventListener('change', filterRows);
+					document.getElementById('course-status-filter').addEventListener('change', filterRows);
+					document.getElementById('course-rows-per-page').addEventListener('change', function() {
+						currentPage = 1;
+						updatePagination();
+					});
+					document.getElementById('course-prev-page').addEventListener('click', function() {
+						if (currentPage > 1) {
+							currentPage--;
+							updatePagination();
+						}
+					});
+					document.getElementById('course-next-page').addEventListener('click', function() {
+						const total = filteredRows.length;
+						const totalPages = Math.ceil(total / rowsPerPage) || 1;
+						if (currentPage < totalPages) {
+							currentPage++;
+							updatePagination();
+						}
+					});
+					// Initial display
+					filterRows();
+				})();
 
 				// --- JS pour filtrage/pagination (ISOLÉ pour la table dynamique) ---
 				(function() {

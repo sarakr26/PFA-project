@@ -148,17 +148,26 @@ def extract():
             return render_template('extract.html', graph_html=None, graph_completion_html=None, data=None)
         
         # Générer le graphique Plotly pour le nombre d'utilisateurs avec design et couleurs personnalisées
-        # Trier les cours par nombre d'utilisateurs décroissant
-        sorted_data = sorted(data, key=lambda d: d['users'] if isinstance(d['users'], (int, float)) else 0, reverse=True)
+        # Trier les cours par nombre d'utilisateurs croissant (pour x de 0 à max)
+        # Trier les barres du plus petit au plus grand nombre d'utilisateurs
+        sorted_data = sorted(data, key=lambda d: d['users'] if isinstance(d['users'], (int, float)) else 0)
         cours = [d['cours'] for d in sorted_data]
         users = [d['users'] for d in sorted_data]
         colors = ['#2e6eab', '#397ec1']
         bar_colors = [colors[i % 2] for i in range(len(cours))]
-        fig = go.Figure([go.Bar(x=cours, y=users, marker=dict(color=bar_colors, line=dict(color='#1f2647', width=1)),
-                                hoverinfo='x+y',
-                                text=users,
-                                textposition='auto',
-                                opacity=0.92)])
+        # Graphe horizontal : cours sur l'axe Y, utilisateurs sur l'axe X
+        fig = go.Figure([
+            go.Bar(
+                y=cours,
+                x=users,
+                orientation='h',
+                marker=dict(color=bar_colors, line=dict(color='#1f2647', width=1)),
+                hoverinfo='x+y',
+                text=users,
+                textposition='auto',
+                opacity=0.92
+            )
+        ])
         fig.update_layout(
             title={
                 'text': "Nombre d'utilisateurs par cours",
@@ -166,17 +175,21 @@ def extract():
                 'xanchor': 'center',
                 'font': dict(size=22, color='#2e6eab', family='Arial Black')
             },
-            xaxis_title="Cours",
-            yaxis_title="Utilisateurs",
-            xaxis_tickangle=-45,
+            yaxis_title="les cours",
+            xaxis_title="NBr utilisateurs",
             plot_bgcolor='#fff',
             paper_bgcolor='#fff',
             font=dict(family='Arial', size=14, color='#2d2d4d'),
-            margin=dict(l=40, r=30, t=70, b=80),
+            margin=dict(l=120, r=30, t=70, b=80),
             bargap=0.25,
             showlegend=False,
         )
-        fig.update_xaxes(showgrid=False, linecolor='#2e6eab')
+        fig.update_xaxes(
+            showgrid=False,
+            linecolor='#2e6eab',
+            autorange=True,
+            range=[0, max(users) if users else 1]
+        )
         fig.update_yaxes(gridcolor='#e3eaf7', zerolinecolor='#2e6eab')
         graph_html = pio.to_html(fig, full_html=False)
 
@@ -228,8 +241,12 @@ def extract():
             flash("Impossible de charger les données des départements", "warning")
 
         session['last_data'] = data  # Pour export Excel
-        # Obtenir la liste unique des départements
-        departments = sorted(list(set(user_dept_df['departement_actuel'].dropna().unique())))
+
+        # Obtenir la liste unique des départements (éviter NameError si user_dept_df est None)
+        if user_dept_df is not None:
+            departments = sorted(list(set(user_dept_df['departement_actuel'].dropna().unique())))
+        else:
+            departments = []
 
         return render_template('extract.html', 
                             graph_html=graph_html, 
@@ -597,13 +614,38 @@ def extract():
             return render_template('extract.html', graph_html=None, graph_completion_html=None, data=None)
         
         # Générer le graphique Plotly pour le nombre d'utilisateurs
-        cours = [d['cours'] for d in data]
-        users = [d['users'] for d in data]
-        fig = go.Figure([go.Bar(x=cours, y=users)])
-        fig.update_layout(title="Nombre d'utilisateurs par cours", 
-                         xaxis_title="Cours", 
-                         yaxis_title="Utilisateurs", 
-                         xaxis_tickangle=-45)
+        # Trier les cours par nombre d'utilisateurs croissant
+            # Trier les barres du plus petit au plus grand nombre d'utilisateurs
+            sorted_data = sorted(data, key=lambda d: d['users'] if isinstance(d['users'], (int, float)) else 0)
+            cours = [d['cours'] for d in sorted_data]
+            users = [d['users'] for d in sorted_data]
+            colors = ['#2e6eab', '#397ec1']
+            bar_colors = [colors[i % 2] for i in range(len(cours))]
+            fig = go.Figure([
+                go.Bar(
+                    y=cours,
+                    x=users,
+                    orientation='h',
+                    marker=dict(color=bar_colors, line=dict(color='#1f2647', width=1)),
+                    hoverinfo='x+y',
+                    text=users,
+                    textposition='auto',
+                    opacity=0.92
+                )
+            ])
+        fig.update_layout(
+            title="Nombre d'utilisateurs par cours",
+            xaxis_title="NBr utilisateurs",
+            yaxis_title="les cours",
+            plot_bgcolor='#fff',
+            paper_bgcolor='#fff',
+            font=dict(family='Arial', size=14, color='#2d2d4d'),
+            margin=dict(l=120, r=30, t=70, b=80),
+            bargap=0.25,
+            showlegend=False,
+        )
+        fig.update_xaxes(showgrid=False, linecolor='#2e6eab')
+        fig.update_yaxes(gridcolor='#e3eaf7', zerolinecolor='#2e6eab')
         graph_html = pio.to_html(fig, full_html=False)
         
         # Générer le graphique Plotly pour le taux de complétion

@@ -97,3 +97,38 @@
 </table>
 </div>
 </div>
+<div id="user-dept-graph" style="width:100%; min-height:340px; background:#fff; border-radius:16px; box-shadow:0 4px 18px 0 rgba(80,112,255,0.08); padding:1rem; margin-bottom:2rem;"></div>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+// Générer le graphe utilisateurs/département après le rendu du tableau
+document.addEventListener('DOMContentLoaded', function() {
+    // Extraire les départements du tableau
+    const rows = document.querySelectorAll('.analysis-container table tbody tr');
+    const deptCounts = {};
+    rows.forEach(row => {
+        const dept = row.children[6]?.textContent.trim();
+        if (dept && dept !== 'Département Actuel') {
+            deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+        }
+    });
+    const departments = Object.keys(deptCounts).sort();
+    const counts = departments.map(d => deptCounts[d]);
+    const data = [{
+        x: departments,
+        y: counts,
+        type: 'bar',
+        marker: {color: '#2e6eab'},
+        text: counts.map(String),
+        textposition: 'auto',
+    }];
+    const layout = {
+        title: 'Nombre d\'utilisateurs par département',
+        xaxis: { title: 'Département' },
+        yaxis: { title: 'Nombre d\'utilisateurs' },
+        margin: { t: 40, l: 60, r: 20, b: 60 },
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff',
+    };
+    Plotly.newPlot('user-dept-graph', data, layout, {responsive:true});
+});
+</script>
